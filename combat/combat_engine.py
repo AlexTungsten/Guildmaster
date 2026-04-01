@@ -1,63 +1,160 @@
 """
 combat_engine.py — Turn-based combat simulator for Guildmaster.
 
-Runs round-by-round combat between a party of heroes and a group of enemies.
 Each round:
-  1. Hero phase: every living hero rolls their dice pool, assigns dice to
-     skills, executes skills, and deals damage to enemies.
-  2. Enemy phase: every living enemy uses its next attack pattern skill to
-     deal damage to a random living hero.
+  Hero phase — for every living hero:
+    1. Start-of-turn: apply status modifiers to dice pool (Upgrade/Downgrade/Bleed).
+    2. Roll dice pool (Advantage / Disadvantage / Lucky Roll / Paralyze).
+    3. Assign dice to skills (behavior profile or player input).
+    4. For each skill that fires:
+       - Defend skills: activate passives (Bloodletting), apply Barrier (Mage).
+       - Damage/AOE: check Weak on attacker, Vulnerable on target.
+         Eviscerate: multi-hit, Vulnerable per hit, enhanced if target has debuff.
+       - Heal: restore HP to lowest-HP ally.
+       - Cleanse: remove status stacks from allies.
+       - Cooldown skills (Mage): dice go to refresh progress if on cooldown.
+    5. Apply skill status effects to targets (poison, weak, taunt …).
+    6. End-of-turn: Burn/Poison deal damage, all durations tick.
 
-The engine supports two execution modes:
-  - simulate()      — Full run with event publication (used in real gameplay).
-  - pre_simulate()  — Deterministic dry-run with seed=42 and no events
-                      (used to show the player a projected outcome).
+  Enemy phase — for every living enemy:
+    1. take_turn() rolls dice and returns triggered (skill, effectiveness) pairs.
+    2. Defend: add block. Damage: apply Weak/Vulnerable, Barrier absorption.
+    3. Apply skill status effects to targeted heroes.
+    4. End-of-turn: tick enemy statuses.
 
-No game state is mutated outside of the hero/enemy HP values; callers are
-responsible for resetting HP if they pre-simulate before the real combat.
+Supports simulate() (live, with events) and pre_simulate() (seeded, no events).
 """
 
-from dataclasses import dataclass, field
-from typing import List, Optional, Tuple
-import random
+from __future__ import annotations
 
-from hero.hero_entity import HeroEntity, HeroStatus, Stat
+import math
+import random
+from dataclasses import dataclass, field
+from typing import Dict, List, Optional, Tuple
+
+from hero.hero_entity import HeroEntity, HeroStatus, Skill, Stat
 from enemy.enemy import Enemy
-from combat.dice_pool_compositor import compose_pool, roll_pool, Die
+from combat.dice_pool_compositor import compose_pool, apply_status_modifiers, roll_pool, Die
 from combat.dice_assignment_engine import assign_dice, SkillAssignment
 from combat.skill_executor import execute_all_skills, SkillResult
+from combat.status_effects import (
+    StatusEffect, StatusType, apply_status, tick_statuses,
+    has_status, get_status, has_any_debuff,
+)
 from game_runtime.event_bus import EventBus
 
 
-def _split_pool(pool: List[Die]) -> Tuple[List[Die], List[Die]]:
-    """
-    Partition a dice pool into locked dice (d4) and normal dice (d10).
-
-    Used internally to feed separate locked/normal lists into assign_dice().
-    """
-    locked = [d for d in pool if d.is_locked]
-    normal = [d for d in pool if not d.is_locked]
-    return locked, normal
-
+# ---------------------------------------------------------------------------
+# Result types
+# ---------------------------------------------------------------------------
 
 @dataclass
 class CombatRound:
     """Snapshot of one round of combat."""
     round_number: int
-    hero_results: List[SkillResult]    # All skill results fired by heroes this round
-    enemy_results: List[SkillResult]   # All skill results fired by enemies this round
-    hero_damage_taken: int             # Total HP lost by heroes in this round
-    enemy_damage_dealt: int            # Total HP removed from enemies this round
+    hero_results: List[SkillResult]
+    enemy_results: List[SkillResult]
+    hero_damage_taken: int
+    enemy_damage_dealt: int
 
 
 @dataclass
 class CombatResult:
     """Aggregate result of a full combat encounter."""
-    victory: bool                      # True when all enemies died before all heroes
+    victory: bool
     rounds: List[CombatRound]
-    heroes_survived: List[str]         # hero_id of each hero still alive at the end
-    total_hero_damage_taken: int       # Cumulative HP lost across all rounds
+    heroes_survived: List[str]
+    total_hero_damage_taken: int
 
+
+# ---------------------------------------------------------------------------
+# Damage application helpers
+# ---------------------------------------------------------------------------
+
+def _apply_weak(damage: int, attacker_effects: List[StatusEffect]) -> int:
+    """Reduce damage by 25% if the attacker is Weak."""
+    if has_status(attacker_effects, StatusType.WEAK):
+        return max(1, int(damage * 0.75))
+    return damage
+
+
+def _apply_vulnerable(damage: int, target_effects: List[StatusEffect]) -> int:
+    """Increase damage by 50% (last multiplier) if target is Vulnerable."""
+    if has_status(target_effects, StatusType.VULNERABLE):
+        return int(damage * 1.5)
+    return damage
+
+
+def _apply_barrier(amount: int, barrier: List[int]) -> Tuple[int, int]:
+    """
+    Absorb amount through the party barrier (barrier[0] = remaining hp).
+    Returns (damage_after_barrier, new_barrier_remaining).
+    """
+    absorbed = min(barrier[0], amount)
+    barrier[0] -= absorbed
+    return amount - absorbed, barrier[0]
+
+
+def _damage_hero(
+    hero: HeroEntity,
+    raw_amount: int,
+    barrier: List[int],
+) -> int:
+    """
+    Apply damage to a hero through Barrier → Temp HP → Real HP.
+    Returns real HP lost.
+    """
+    after_barrier, _ = _apply_barrier(raw_amount, barrier)
+    return hero.absorb_damage(after_barrier)
+
+
+def _apply_skill_status(
+    special: Optional[str],
+    effectiveness: int,
+    targets: List,   # List[HeroEntity] or List[Enemy]
+) -> None:
+    """
+    Apply status effects encoded in a skill's special tag to a list of targets.
+    Called after damage is dealt so Vulnerable etc. are already resolved.
+    """
+    if special is None:
+        return
+
+    from combat.status_effects import StatusEffect, StatusType
+
+    if special == "poison":
+        effect = StatusEffect(
+            status_type=StatusType.POISON,
+            duration=2,
+            potency=effectiveness,
+        )
+        for t in targets:
+            t.apply_status(effect)
+
+    elif special == "weak":
+        effect = StatusEffect(status_type=StatusType.WEAK, duration=1)
+        for t in targets:
+            t.apply_status(effect)
+
+    elif special == "vulnerable":
+        effect = StatusEffect(status_type=StatusType.VULNERABLE, duration=1)
+        for t in targets:
+            t.apply_status(effect)
+
+    elif special == "taunt":
+        effect = StatusEffect(status_type=StatusType.TAUNT, duration=1)
+        for t in targets:
+            t.apply_status(effect)
+
+    elif special == "burn":
+        effect = StatusEffect(status_type=StatusType.BURN, stacks=2)
+        for t in targets:
+            t.apply_status(effect)
+
+
+# ---------------------------------------------------------------------------
+# Combat engine
+# ---------------------------------------------------------------------------
 
 class CombatEngine:
     def __init__(self, event_bus: EventBus):
@@ -69,13 +166,6 @@ class CombatEngine:
         enemies: List[Enemy],
         max_rounds: int = 50,
     ) -> CombatResult:
-        """
-        Run a live combat encounter and publish events.
-
-        Uses an unseeded (random) RNG for genuine randomness.  Publishes
-        "combat.round_complete", "combat.victory", or "combat.defeat" events
-        on the bus so the UI and other systems can react in real time.
-        """
         return self._run(heroes, enemies, max_rounds, publish_events=True, seed=None)
 
     def pre_simulate(
@@ -83,16 +173,9 @@ class CombatEngine:
         heroes: List[HeroEntity],
         enemies: List[Enemy],
     ) -> CombatResult:
-        """
-        Run a deterministic dry-run to project the combat outcome.
-
-        Uses seed=42 so the result is reproducible and does not affect the
-        actual RNG state.  No events are published.  Note: this mutates hero
-        and enemy HP — the caller should work on copies if the originals
-        must be preserved.
-        """
         return self._run(heroes, enemies, max_rounds=50, publish_events=False, seed=42)
 
+    # ------------------------------------------------------------------
     def _run(
         self,
         heroes: List[HeroEntity],
@@ -101,193 +184,311 @@ class CombatEngine:
         publish_events: bool,
         seed: Optional[int],
     ) -> CombatResult:
-        """
-        Internal combat loop shared by simulate() and pre_simulate().
 
-        Parameters
-        ----------
-        heroes         : Party of heroes; their HP is mutated in place.
-        enemies        : List of enemies; their HP is mutated in place.
-        max_rounds     : Safety cap to prevent infinite loops.
-        publish_events : Whether to fire events on the bus each round.
-        seed           : RNG seed for deterministic runs; None = random.
-        """
-        if seed is not None:
-            rng = random.Random(seed)   # Isolated seeded RNG for pre-simulation
-        else:
-            rng = random.Random()       # Fresh unseeded RNG for live combat
+        rng = random.Random(seed) if seed is not None else random.Random()
 
         rounds: List[CombatRound] = []
         total_hero_damage_taken = 0
 
-        # Bloodletting state carried across rounds
-        prev_bloodletting_active: dict = {}   # hero_id -> bool
-        prev_damage_tracked: dict = {}        # hero_id -> int (damage accumulated)
-        prev_bloodletting_cap: dict = {}      # hero_id -> int (effectiveness cap)
+        # Bloodletting cross-round state
+        prev_bl_active: Dict[str, bool] = {}
+        prev_bl_tracked: Dict[str, int] = {}
+        prev_bl_cap: Dict[str, int] = {}
+
+        # Mage Barrier: [remaining_hp], expires at start of barrier_expire_round
+        barrier: List[int] = [0]
+        barrier_expire_round: int = -1
 
         for round_number in range(1, max_rounds + 1):
             living_heroes = [h for h in heroes if h.current_health > 0]
             living_enemies = [e for e in enemies if e.is_alive]
-
-            # End early if one side is already wiped out
             if not living_heroes or not living_enemies:
                 break
 
-            # --- Apply Bloodletting conversion from PREVIOUS round ---
+            # --- Expire barrier at the start of its expiry round ---
+            if round_number >= barrier_expire_round:
+                barrier[0] = 0
+
+            # --- Apply Bloodletting temp-HP conversion from previous round ---
             for hero in heroes:
                 hid = hero.hero_id
-                if prev_bloodletting_active.get(hid):
-                    tracked = prev_damage_tracked.get(hid, 0)
-                    cap = prev_bloodletting_cap.get(hid, 0)
-                    amount = min(tracked, cap)
+                if prev_bl_active.get(hid):
+                    amount = min(prev_bl_tracked.get(hid, 0), prev_bl_cap.get(hid, 0))
                     if amount > 0:
                         hero.apply_temp_hp(amount)
 
-            # Reset Bloodletting tracking for this round
-            bloodletting_active: dict = {}
-            damage_tracked: dict = {}
-            bloodletting_cap: dict = {}
+            bl_active: Dict[str, bool] = {}
+            bl_tracked: Dict[str, int] = {}
+            bl_cap: Dict[str, int] = {}
 
             all_hero_results: List[SkillResult] = []
+            all_enemy_results: List[SkillResult] = []
             enemy_damage_dealt = 0
+            hero_damage_taken = 0
+            round_self_damage: Dict[str, int] = {}
 
-            # --- Hero phase ---
-            # First pass: identify which heroes have Bloodletting active this round
-            # (needs assignments, so we gather results first below)
-
-            round_self_damage: dict = {}  # hero_id -> self-inflicted blood_cleave cost
-
+            # ==============================================================
+            # HERO PHASE
+            # ==============================================================
             for hero in living_heroes:
-                # Build and split the dice pool based on hero's exhaustion state
+                has_lucky = hero.has_passive("lucky_roll")
+
+                # 1. Build pool, apply Upgrade/Downgrade/Bleed
                 pool = compose_pool(hero)
-                locked_dice, normal_dice = _split_pool(pool)
+                pool = apply_status_modifiers(pool, hero.status_effects, rng)
 
-                # Roll each category separately so assign_dice can handle them differently
-                rolled_locked = [rng.randint(1, d.sides) for d in locked_dice]
-                rolled_normal = [rng.randint(1, d.sides) for d in normal_dice]
+                # 2. Roll (Advantage / Disadvantage / Lucky Roll / Paralyze)
+                rolled = roll_pool(pool, hero.status_effects, rng, has_lucky_roll=has_lucky)
 
-                # Assign dice to skills according to the hero's behavior profile
+                # Split locked vs normal for assign_dice
+                locked_dice = [d for d in pool if d.is_locked]
+                normal_dice = [d for d in pool if not d.is_locked]
+                rolled_locked = rolled[: len(locked_dice)]
+                rolled_normal = rolled[len(locked_dice):]
+
+                # 3. Assign dice to skills
                 assignments = assign_dice(hero, rolled_locked, rolled_normal)
-                # Resolve each assignment into a SkillResult (dice sum + stat modifier)
+
+                # 4. Detect Bloodletting before firing skills
+                for assignment in assignments:
+                    sk = assignment.skill
+                    if sk.special == "bloodletting" and assignment.is_active:
+                        bl_active[hero.hero_id] = True
+                        bl_tracked[hero.hero_id] = 0
+                        raw_eff = sum(assignment.assigned_dice) + hero.effective_modifier(sk.associated_stat)
+                        bl_cap[hero.hero_id] = max(0, raw_eff)
+
+                # 5. Handle Mage cooldown refresh before executing
+                for assignment in assignments:
+                    sk = assignment.skill
+                    if sk.on_cooldown and assignment.is_active:
+                        sk.refresh_progress += sum(assignment.assigned_dice)
+                        if sk.refresh_progress >= sk.refresh_cost:
+                            sk.on_cooldown = False
+                            sk.refresh_progress = 0
+                        # Dice consumed toward refresh — skip normal execution
+                        assignment.assigned_dice = []
+
+                # 6. Execute skills
                 results = execute_all_skills(hero, assignments)
-                all_hero_results.extend(results)
 
-                # Detect active Bloodletting this round and record its cap
+                # 7. Apply each skill result
                 for result in results:
-                    if result.special == "bloodletting":
-                        bloodletting_active[hero.hero_id] = True
-                        damage_tracked[hero.hero_id] = 0
-                        bloodletting_cap[hero.hero_id] = result.effectiveness
+                    if result.effectiveness <= 0 and result.hit_count == 0:
+                        continue
 
-                # Apply damage from each skill result to the enemy targets
-                for result in results:
-                    if result.effectiveness <= 0:
-                        continue   # Negative effectiveness deals no damage
+                    sk = result.skill
+
+                    # --- Defend / passive skills ---
+                    if result.effect_type == "defend":
+                        all_hero_results.append(result)
+
+                        # Mage Barrier
+                        if sk.special == "barrier":
+                            barrier[0] = result.effectiveness
+                            barrier_expire_round = round_number + 1
+                            self._maybe_cooldown(hero, sk)
+
+                        continue  # no outgoing damage
+
+                    # --- Heal ---
+                    if result.effect_type == "heal":
+                        all_hero_results.append(result)
+                        targets = [h for h in heroes if h.current_health > 0]
+                        if targets:
+                            target = min(targets, key=lambda h: h.current_health)
+                            heal_amount = result.effectiveness
+                            target.current_health = min(
+                                target.max_health,
+                                target.current_health + heal_amount,
+                            )
+                        continue
+
+                    # --- Cleanse ---
+                    if result.effect_type == "cleanse":
+                        all_hero_results.append(result)
+                        stacks_to_remove = hero.effective_modifier(Stat.CHA)
+                        num_targets = math.ceil(result.effectiveness / 2)
+                        # Target allies (excluding self for simplicity — Cleanse any living hero)
+                        ally_targets = [h for h in heroes if h.current_health > 0][:num_targets]
+                        for ally in ally_targets:
+                            remaining = stacks_to_remove
+                            # Remove from oldest debuff first
+                            debuffs = [e for e in ally.status_effects if e.is_debuff()]
+                            for debuff in debuffs:
+                                if remaining <= 0:
+                                    break
+                                if debuff.status_type == StatusType.POISON:
+                                    removed = min(remaining, debuff.stacks if debuff.stacks else debuff.potency)
+                                    debuff.potency = max(0, debuff.potency - remaining)
+                                    remaining -= removed
+                                    if debuff.potency <= 0:
+                                        ally.clear_status(debuff.status_type)
+                                elif debuff.status_type == StatusType.BURN:
+                                    removed = min(remaining, debuff.stacks)
+                                    debuff.stacks -= removed
+                                    remaining -= removed
+                                    if debuff.stacks <= 0:
+                                        ally.clear_status(debuff.status_type)
+                                else:
+                                    removed = min(remaining, debuff.duration)
+                                    debuff.duration -= removed
+                                    remaining -= removed
+                                    if debuff.duration <= 0:
+                                        ally.clear_status(debuff.status_type)
+                        continue
+
+                    # --- Damage / AOE skills ---
                     living_now = [e for e in enemies if e.is_alive]
                     if not living_now:
                         break
 
-                    # Blood Cleave: pay HP cost before dealing AOE damage
-                    if result.special == "blood_cleave":
+                    # Taunt filter: if any enemy has Taunt, single-target must pick from them
+                    taunting = [e for e in living_now if has_status(e.status_effects, StatusType.TAUNT)]
+
+                    # Blood Cleave self-cost (paid only when live targets exist)
+                    if sk.special == "blood_cleave":
                         cost = max(1, int(hero.current_health * 0.05))
-                        if hero.temp_hp >= cost:
-                            hero.temp_hp -= cost
-                        else:
-                            remaining_cost = cost - hero.temp_hp
-                            hero.temp_hp = 0
-                            hero.current_health = max(1, hero.current_health - remaining_cost)
-                        # Track self-damage for Bloodletting
-                        round_self_damage[hero.hero_id] = (
-                            round_self_damage.get(hero.hero_id, 0) + cost
-                        )
+                        temp_abs = min(hero.temp_hp, cost)
+                        hero.temp_hp -= temp_abs
+                        real_cost = cost - temp_abs
+                        actual = min(real_cost, hero.current_health - 1)
+                        hero.current_health -= actual
+                        hero_damage_taken += actual
+                        round_self_damage[hero.hero_id] = round_self_damage.get(hero.hero_id, 0) + cost
 
-                    if result.hits_all:
-                        # AOE: damage every living enemy equally
+                    all_hero_results.append(result)
+
+                    # --- Eviscerate (multi-hit) ---
+                    if sk.special == "eviscerate":
+                        target = rng.choice(taunting if taunting else living_now)
+                        base_hit = result.per_hit_damage
+                        enhanced = target.has_any_debuff()
+                        per_hit = (base_hit + 2) if enhanced else base_hit  # 4+DEX vs 2+DEX
+                        per_hit = _apply_weak(per_hit, hero.status_effects)
+                        for _ in range(result.hit_count):
+                            hit_dmg = _apply_vulnerable(per_hit, target.status_effects)
+                            real = target.take_damage(hit_dmg)
+                            enemy_damage_dealt += real
+
+                    elif result.hits_all:
+                        # AOE — Taunt is bypassed by AOE
                         for enemy in living_now:
-                            enemy.take_damage(result.effectiveness)
-                            enemy_damage_dealt += result.effectiveness
+                            dmg = _apply_weak(result.effectiveness, hero.status_effects)
+                            dmg = _apply_vulnerable(dmg, enemy.status_effects)
+                            real = enemy.take_damage(dmg)
+                            enemy_damage_dealt += real
+                        # Apply AOE status effects to all enemies
+                        _apply_skill_status(sk.special, result.effectiveness, living_now)
+
                     else:
-                        # Single-target: choose a random living enemy
-                        target = rng.choice(living_now)
-                        target.take_damage(result.effectiveness)
-                        enemy_damage_dealt += result.effectiveness
+                        # Single-target
+                        target = rng.choice(taunting if taunting else living_now)
+                        dmg = _apply_weak(result.effectiveness, hero.status_effects)
+                        dmg = _apply_vulnerable(dmg, target.status_effects)
+                        real = target.take_damage(dmg)
+                        enemy_damage_dealt += real
+                        # Apply single-target status effects
+                        _apply_skill_status(sk.special, result.effectiveness, [target])
 
-            # Accumulate self-inflicted damage into Bloodletting tracker
+                    # Put skill on cooldown after firing (Mage)
+                    self._maybe_cooldown(hero, sk)
+
+                # 8. Hero end-of-turn: tick statuses, deal Burn/Poison damage
+                hero.status_effects, dmg_events = tick_statuses(hero.status_effects)
+                for _, dmg in dmg_events:
+                    real = _damage_hero(hero, dmg, barrier)
+                    hero_damage_taken += real
+                    if bl_active.get(hero.hero_id):
+                        bl_tracked[hero.hero_id] = bl_tracked.get(hero.hero_id, 0) + real
+
+            # Accumulate Blood Cleave self-damage into Bloodletting tracker
             for hid, self_dmg in round_self_damage.items():
-                if bloodletting_active.get(hid):
-                    damage_tracked[hid] = damage_tracked.get(hid, 0) + self_dmg
+                if bl_active.get(hid):
+                    bl_tracked[hid] = bl_tracked.get(hid, 0) + self_dmg
 
-            # --- Enemy phase ---
-            all_enemy_results: List[SkillResult] = []
-            hero_damage_taken = 0
-
+            # ==============================================================
+            # ENEMY PHASE
+            # ==============================================================
             for enemy in living_enemies:
                 if not enemy.is_alive:
-                    continue   # Skip enemies killed during the hero phase
+                    continue
+                if not enemy.skills:
+                    continue
+
                 living_now = [h for h in heroes if h.current_health > 0]
                 if not living_now:
                     break
 
-                # Advance the enemy's attack pattern to get the next skill index
-                skill_index = enemy.pattern.next_skill_index()
-                if not enemy.skills:
-                    continue   # Enemy has no skills defined; skip its turn
-                skill = enemy.skills[skill_index % len(enemy.skills)]
+                triggered = enemy.take_turn(rng)
 
-                # Enemies always roll d10s (no exhaustion or locked dice mechanic)
-                rolled = [rng.randint(1, 10) for _ in range(enemy.base_dice_count)]
-                effectiveness = sum(rolled) + enemy.stat_modifier(skill.associated_stat)
-
-                # Import here to avoid circular name collision with the local SkillResult
                 from combat.skill_executor import SkillResult as SR
-                enemy_result = SR(
-                    skill=skill,
-                    effectiveness=effectiveness,
-                    effect_type=skill.effect_type,
-                    hits_all=(skill.effect_type == "aoe"),
-                )
-                all_enemy_results.append(enemy_result)
 
-                # Deal damage to a random living hero using absorb_damage (temp HP first)
-                if effectiveness > 0:
-                    target_hero = rng.choice(living_now)
-                    real_damage = target_hero.absorb_damage(effectiveness)
-                    hero_damage_taken += real_damage
-                    # Track damage that hit real HP for Bloodletting
-                    hid = target_hero.hero_id
-                    if bloodletting_active.get(hid):
-                        damage_tracked[hid] = damage_tracked.get(hid, 0) + real_damage
+                for skill, effectiveness in triggered:
+                    enemy_result = SR(
+                        skill=skill,
+                        effectiveness=effectiveness,
+                        effect_type=skill.effect_type,
+                        hits_all=(skill.effect_type == "aoe"),
+                    )
+                    all_enemy_results.append(enemy_result)
+
+                    if effectiveness <= 0:
+                        continue
+
+                    if skill.effect_type == "defend":
+                        enemy.block += effectiveness
+
+                    elif skill.effect_type == "aoe":
+                        for target_hero in list(living_now):
+                            dmg = _apply_weak(effectiveness, enemy.status_effects)
+                            dmg = _apply_vulnerable(dmg, target_hero.status_effects)
+                            real = _damage_hero(target_hero, dmg, barrier)
+                            hero_damage_taken += real
+                            if bl_active.get(target_hero.hero_id):
+                                bl_tracked[target_hero.hero_id] = bl_tracked.get(target_hero.hero_id, 0) + real
+                        _apply_skill_status(skill.special, effectiveness, list(living_now))
+
+                    else:
+                        target_hero = rng.choice(living_now)
+                        dmg = _apply_weak(effectiveness, enemy.status_effects)
+                        dmg = _apply_vulnerable(dmg, target_hero.status_effects)
+                        real = _damage_hero(target_hero, dmg, barrier)
+                        hero_damage_taken += real
+                        if bl_active.get(target_hero.hero_id):
+                            bl_tracked[target_hero.hero_id] = bl_tracked.get(target_hero.hero_id, 0) + real
+                        _apply_skill_status(skill.special, effectiveness, [target_hero])
+
+                # Enemy end-of-turn: tick statuses, deal Burn/Poison damage
+                enemy.status_effects, dmg_events = tick_statuses(enemy.status_effects)
+                for _, dmg in dmg_events:
+                    enemy.take_damage(dmg)
 
             total_hero_damage_taken += hero_damage_taken
 
-            # Save Bloodletting state for conversion at start of next round
-            prev_bloodletting_active = dict(bloodletting_active)
-            prev_damage_tracked = dict(damage_tracked)
-            prev_bloodletting_cap = dict(bloodletting_cap)
+            # Carry Bloodletting state forward
+            prev_bl_active = dict(bl_active)
+            prev_bl_tracked = dict(bl_tracked)
+            prev_bl_cap = dict(bl_cap)
 
-            combat_round = CombatRound(
+            rounds.append(CombatRound(
                 round_number=round_number,
                 hero_results=all_hero_results,
                 enemy_results=all_enemy_results,
                 hero_damage_taken=hero_damage_taken,
                 enemy_damage_dealt=enemy_damage_dealt,
-            )
-            rounds.append(combat_round)
+            ))
 
             if publish_events:
                 self._event_bus.publish("combat.round_complete", round_number)
 
-            # Re-check survivors after both phases before starting the next round
             living_heroes = [h for h in heroes if h.current_health > 0]
             living_enemies = [e for e in enemies if e.is_alive]
-
             if not living_enemies or not living_heroes:
                 break
 
-        # --- Determine final outcome ---
         living_heroes = [h for h in heroes if h.current_health > 0]
         living_enemies = [e for e in enemies if e.is_alive]
-        # Victory requires all enemies dead AND at least one hero alive
         victory = len(living_enemies) == 0 and len(living_heroes) > 0
         heroes_survived = [h.hero_id for h in living_heroes]
 
@@ -303,3 +504,20 @@ class CombatEngine:
             heroes_survived=heroes_survived,
             total_hero_damage_taken=total_hero_damage_taken,
         )
+
+    # ------------------------------------------------------------------
+    def _maybe_cooldown(self, hero: HeroEntity, skill: Skill) -> None:
+        """
+        Put skill on cooldown after firing, unless the Prepared passive protects it.
+        Prepared: skill in slot 0 never triggers refresh cost.
+        """
+        if skill.refresh_cost <= 0:
+            return
+        if hero.has_passive("prepared"):
+            slot_index = next(
+                (i for i, s in enumerate(hero.skills) if s is skill), None
+            )
+            if slot_index == 0:
+                return
+        skill.on_cooldown = True
+        skill.refresh_progress = 0

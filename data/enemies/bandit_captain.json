@@ -1,0 +1,41 @@
+{
+  "enemy_id": "bandit_captain",
+  "name": "Bandit Captain",
+  "archetype": "bandit",
+  "tier": "common",
+  "max_health": 55,
+  "current_health": 55,
+  "strength": 10,
+  "dexterity": 10,
+  "intelligence": 10,
+  "charisma": 10,
+  "constitution": 10,
+  "base_dice_count": 5,
+  "base_dice_sides": 6,
+  "skills": [
+    {
+      "name": "Plunder",
+      "description": "Accumulates across turns. On trigger deal dice damage and apply Weak for 1 turn.",
+      "associated_stat": "strength",
+      "dice_slots": 2,
+      "effect_type": "damage",
+      "special": "weak"
+    },
+    {
+      "name": "Backstep",
+      "description": "Absorb up to dice incoming damage. Vanishes start of next turn.",
+      "associated_stat": "constitution",
+      "dice_slots": 1,
+      "effect_type": "defend",
+      "special": null
+    },
+    {
+      "name": "Poison Mist",
+      "description": "Accumulates across turns. On trigger apply poison potency = dice for 2 turns to all heroes.",
+      "associated_stat": "dexterity",
+      "dice_slots": 3,
+      "effect_type": "aoe",
+      "special": "poison"
+    }
+  ]
+}

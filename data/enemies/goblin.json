@@ -1,0 +1,33 @@
+{
+  "enemy_id": "goblin",
+  "name": "Goblin",
+  "archetype": "goblin",
+  "tier": "common",
+  "max_health": 20,
+  "current_health": 20,
+  "strength": 10,
+  "dexterity": 10,
+  "intelligence": 10,
+  "charisma": 10,
+  "constitution": 10,
+  "base_dice_count": 2,
+  "base_dice_sides": 4,
+  "skills": [
+    {
+      "name": "Stab Stab Stab",
+      "description": "Deal dice damage to a single hero. Apply Weak for 1 turn.",
+      "associated_stat": "dexterity",
+      "dice_slots": 1,
+      "effect_type": "damage",
+      "special": "weak"
+    },
+    {
+      "name": "Annoying",
+      "description": "Gain dice block. Apply Taunt for 1 turn. Triggers every other turn.",
+      "associated_stat": "constitution",
+      "dice_slots": 2,
+      "effect_type": "defend",
+      "special": "taunt"
+    }
+  ]
+}

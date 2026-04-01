@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(python -m pytest enemy/tests/test_enemy.py -v)",
+      "Bash(python -m unittest enemy.tests.test_enemy -v)"
+    ]
+  }
+}

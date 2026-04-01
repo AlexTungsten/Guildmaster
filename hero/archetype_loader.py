@@ -66,12 +66,14 @@ def load_archetype(archetype_id: str, hero_id: str, name: str) -> HeroEntity:
             dice_slots=s["dice_slots"],
             effect_type=s["effect_type"],
             special=s.get("special"),
+            refresh_cost=s.get("refresh_cost", 0),
         ))
 
     # Pad to 3 skill slots with None
     while len(skills) < 3:
         skills.append(None)
 
+    max_hp = data.get("max_health", 30)
     hero = HeroEntity(
         hero_id=hero_id,
         name=name,
@@ -81,6 +83,8 @@ def load_archetype(archetype_id: str, hero_id: str, name: str) -> HeroEntity:
         intelligence=stats.get("intelligence", 10),
         charisma=stats.get("charisma", 10),
         constitution=stats.get("constitution", 10),
+        max_health=max_hp,
+        current_health=max_hp,
         base_dice_count=data.get("base_dice_count", 4),
         base_dice_sides=data.get("base_dice_sides", 10),
         locked_dice_sides=locked_dice_sides,

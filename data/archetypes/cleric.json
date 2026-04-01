@@ -1,0 +1,50 @@
+{
+  "archetype_id": "cleric",
+  "name": "Cleric",
+  "base_dice_count": 4,
+  "base_dice_sides": 8,
+  "max_health": 28,
+  "item_slots": 2,
+  "stats": {
+    "strength": 8,
+    "dexterity": 8,
+    "intelligence": 12,
+    "charisma": 16,
+    "constitution": 14
+  },
+  "passives": [
+    {
+      "passive_id": "mender",
+      "name": "Mender",
+      "description": "Heal skills restore 1 additional HP per CHA modifier point above the base.",
+      "effect_type": "mender",
+      "value": 1
+    }
+  ],
+  "skills": [
+    {
+      "name": "Smite",
+      "description": "Deal dice + CHA damage to a single enemy.",
+      "associated_stat": "charisma",
+      "dice_slots": 1,
+      "effect_type": "damage",
+      "special": null
+    },
+    {
+      "name": "Cleanse",
+      "description": "Remove CHA modifier stacks from debuffs (oldest first) from ceil(dice_sum / 2) allies.",
+      "associated_stat": "charisma",
+      "dice_slots": 1,
+      "effect_type": "cleanse",
+      "special": "cleanse"
+    },
+    {
+      "name": "Heal",
+      "description": "Restore dice + CHA HP to the ally with the lowest current HP.",
+      "associated_stat": "charisma",
+      "dice_slots": 1,
+      "effect_type": "heal",
+      "special": "heal"
+    }
+  ]
+}

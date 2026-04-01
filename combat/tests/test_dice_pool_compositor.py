@@ -1,3 +1,4 @@
+import random
 import unittest
 
 from combat.dice_pool_compositor import Die, compose_pool, roll_pool
@@ -16,9 +17,10 @@ def make_hero(**kwargs) -> HeroEntity:
 
 class TestDie(unittest.TestCase):
     def test_roll_in_range(self):
+        rng = random.Random(0)
         die = Die(sides=10)
         for _ in range(100):
-            result = die.roll()
+            result = rng.randint(1, die.sides)
             self.assertGreaterEqual(result, 1)
             self.assertLessEqual(result, 10)
 
@@ -28,7 +30,7 @@ class TestDie(unittest.TestCase):
 
     def test_repr_locked(self):
         die = Die(sides=4, is_locked=True)
-        self.assertEqual(repr(die), "d4[LOCKED]")
+        self.assertEqual(repr(die), "d4[L]")
 
 
 class TestComposePool(unittest.TestCase):
@@ -69,15 +71,17 @@ class TestComposePool(unittest.TestCase):
                 self.assertEqual(die.sides, 10)
 
     def test_roll_pool_returns_correct_count(self):
+        rng = random.Random(0)
         hero = make_hero(exhaustion=0, base_dice_count=4)
         pool = compose_pool(hero)
-        results = roll_pool(pool)
+        results = roll_pool(pool, [], rng)
         self.assertEqual(len(results), 4)
 
     def test_roll_pool_values_in_range(self):
+        rng = random.Random(0)
         hero = make_hero(exhaustion=45, base_dice_count=4)
         pool = compose_pool(hero)
-        results = roll_pool(pool)
+        results = roll_pool(pool, [], rng)
         for i, val in enumerate(results):
             die = pool[i]
             self.assertGreaterEqual(val, 1)

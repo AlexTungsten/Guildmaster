@@ -3,6 +3,7 @@
   "name": "Barbarian",
   "base_dice_count": 4,
   "base_dice_sides": 12,
+  "max_health": 35,
   "item_slots": 1,
   "stats": {
     "strength": 14,

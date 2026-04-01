@@ -1,0 +1,50 @@
+{
+  "archetype_id": "rogue",
+  "name": "Rogue",
+  "base_dice_count": 7,
+  "base_dice_sides": 6,
+  "max_health": 25,
+  "item_slots": 2,
+  "stats": {
+    "strength": 8,
+    "dexterity": 16,
+    "intelligence": 10,
+    "charisma": 12,
+    "constitution": 10
+  },
+  "passives": [
+    {
+      "passive_id": "lucky_roll",
+      "name": "Lucky Roll",
+      "description": "After rolling all dice, reroll the single lowest result and keep the new value.",
+      "effect_type": "lucky_roll",
+      "value": 1
+    }
+  ],
+  "skills": [
+    {
+      "name": "Poisoned Dagger",
+      "description": "Deal dice + DEX damage to a single enemy and apply Poison.",
+      "associated_stat": "dexterity",
+      "dice_slots": 2,
+      "effect_type": "damage",
+      "special": "poison"
+    },
+    {
+      "name": "Knockout",
+      "description": "Deal dice + DEX damage to a single enemy and apply Vulnerable.",
+      "associated_stat": "dexterity",
+      "dice_slots": 1,
+      "effect_type": "damage",
+      "special": "vulnerable"
+    },
+    {
+      "name": "Eviscerate",
+      "description": "Strike a single enemy multiple times. Hit count equals sum of 2 dice. Each hit deals 2 + DEX damage (4 + DEX if target has any debuff).",
+      "associated_stat": "dexterity",
+      "dice_slots": 2,
+      "effect_type": "damage",
+      "special": "eviscerate"
+    }
+  ]
+}

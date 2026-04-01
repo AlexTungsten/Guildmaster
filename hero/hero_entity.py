@@ -15,7 +15,18 @@ import random
 from dataclasses import dataclass, field
 from enum import Enum
 from math import floor
-from typing import Any, List, Optional
+from typing import Any, List, Optional, TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from combat.status_effects import StatusEffect, StatusType
+
+
+def _load_status_effects(raw: list) -> list:
+    """Deserialize status effects without creating a hard circular import."""
+    if not raw:
+        return []
+    from combat.status_effects import StatusEffect
+    return [StatusEffect.from_dict(d) for d in raw]
 
 
 class Stat(Enum):
@@ -43,8 +54,15 @@ class Skill:
     description: str
     associated_stat: Stat   # Stat modifier added to this skill's effectiveness roll
     dice_slots: int          # How many dice from the pool are reserved for this skill
-    effect_type: str         # e.g. "damage", "heal", "aoe" — drives combat resolution
-    special: Optional[str] = None  # Optional special mechanic tag (e.g. "blood_cleave", "bloodletting")
+    effect_type: str         # e.g. "damage", "heal", "aoe", "defend", "cleanse", "barrier"
+    special: Optional[str] = None  # Optional mechanic tag (e.g. "blood_cleave", "eviscerate")
+
+    # Mage refresh system: skills with refresh_cost > 0 go on cooldown after firing.
+    # Dice assigned to a cooling skill accumulate in refresh_progress each turn.
+    # When refresh_progress >= refresh_cost the skill is ready again.
+    refresh_cost: int = 0
+    refresh_progress: int = 0
+    on_cooldown: bool = False
 
     def to_dict(self) -> dict:
         return {
@@ -54,6 +72,9 @@ class Skill:
             "dice_slots": self.dice_slots,
             "effect_type": self.effect_type,
             "special": self.special,
+            "refresh_cost": self.refresh_cost,
+            "refresh_progress": self.refresh_progress,
+            "on_cooldown": self.on_cooldown,
         }
 
     @classmethod
@@ -65,6 +86,9 @@ class Skill:
             dice_slots=data["dice_slots"],
             effect_type=data["effect_type"],
             special=data.get("special"),
+            refresh_cost=data.get("refresh_cost", 0),
+            refresh_progress=data.get("refresh_progress", 0),
+            on_cooldown=data.get("on_cooldown", False),
         )
 
 
@@ -119,6 +143,7 @@ class HeroEntity:
     locked_dice_sides: int = 4       # Die type for exhaustion locked dice (d4 default, d6 with Ironhide)
     temp_hp: int = 0                 # Temporary HP — absorbs damage before real HP
     passives: List[dict] = field(default_factory=list)  # Named passives e.g. [{"passive_id": "ironhide", ...}]
+    status_effects: List[Any] = field(default_factory=list)  # List[StatusEffect] — typed as Any to avoid circular import
 
     # ------------------------------------------------------------------
     # Internal stat helpers
@@ -341,6 +366,34 @@ class HeroEntity:
         self.temp_hp = amount
 
     # ------------------------------------------------------------------
+    # Status effects — thin wrappers over combat.status_effects helpers
+    # ------------------------------------------------------------------
+
+    def apply_status(self, effect: Any) -> None:
+        """Apply a status effect following stacking rules."""
+        from combat.status_effects import apply_status
+        self.status_effects = apply_status(self.status_effects, effect)
+
+    def has_status(self, status_type: Any) -> bool:
+        """Return True if this hero has an active status of the given type."""
+        from combat.status_effects import has_status
+        return has_status(self.status_effects, status_type)
+
+    def get_status(self, status_type: Any) -> Optional[Any]:
+        """Return the active StatusEffect of the given type, or None."""
+        from combat.status_effects import get_status
+        return get_status(self.status_effects, status_type)
+
+    def has_any_debuff(self) -> bool:
+        """Return True if any active status effect is a debuff."""
+        from combat.status_effects import has_any_debuff
+        return has_any_debuff(self.status_effects)
+
+    def clear_status(self, status_type: Any) -> None:
+        """Remove all effects of the given type."""
+        self.status_effects = [e for e in self.status_effects if e.status_type != status_type]
+
+    # ------------------------------------------------------------------
     # Serialization
     # ------------------------------------------------------------------
 
@@ -375,6 +428,7 @@ class HeroEntity:
             "locked_dice_sides": self.locked_dice_sides,
             "temp_hp": self.temp_hp,
             "passives": self.passives,
+            "status_effects": [e.to_dict() for e in self.status_effects],
         }
 
     @classmethod
@@ -413,4 +467,5 @@ class HeroEntity:
             locked_dice_sides=data.get("locked_dice_sides", 4),
             temp_hp=data.get("temp_hp", 0),
             passives=data.get("passives", []),
+            status_effects=_load_status_effects(data.get("status_effects", [])),
         )

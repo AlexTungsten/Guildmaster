@@ -1,0 +1,53 @@
+{
+  "archetype_id": "mage",
+  "name": "Mage",
+  "base_dice_count": 5,
+  "base_dice_sides": 10,
+  "max_health": 20,
+  "item_slots": 2,
+  "stats": {
+    "strength": 7,
+    "dexterity": 8,
+    "intelligence": 16,
+    "charisma": 12,
+    "constitution": 8
+  },
+  "passives": [
+    {
+      "passive_id": "prepared",
+      "name": "Prepared",
+      "description": "The first skill (slot 0) is immune to cooldown — it never goes on cooldown after firing.",
+      "effect_type": "prepared",
+      "value": 1
+    }
+  ],
+  "skills": [
+    {
+      "name": "Arcane Bolt",
+      "description": "Deal dice + INT damage to a single enemy. Never goes on cooldown.",
+      "associated_stat": "intelligence",
+      "dice_slots": 1,
+      "effect_type": "damage",
+      "special": null,
+      "refresh_cost": 0
+    },
+    {
+      "name": "Fireball",
+      "description": "Deal dice + INT damage to all enemies and apply Burn. Goes on cooldown after use; refresh by spending dice worth a sum of 10.",
+      "associated_stat": "intelligence",
+      "dice_slots": 2,
+      "effect_type": "aoe",
+      "special": "burn",
+      "refresh_cost": 10
+    },
+    {
+      "name": "Barrier",
+      "description": "Grant the party a shared barrier equal to dice + INT HP. Expires at the start of the next round. Goes on cooldown after use; refresh by spending dice worth a sum of 15.",
+      "associated_stat": "intelligence",
+      "dice_slots": 2,
+      "effect_type": "defend",
+      "special": "barrier",
+      "refresh_cost": 15
+    }
+  ]
+}

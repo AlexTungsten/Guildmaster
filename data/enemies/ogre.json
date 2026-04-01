@@ -1,0 +1,25 @@
+{
+  "enemy_id": "ogre",
+  "name": "Ogre",
+  "archetype": "ogre",
+  "tier": "elite",
+  "max_health": 70,
+  "current_health": 70,
+  "strength": 10,
+  "dexterity": 10,
+  "intelligence": 10,
+  "charisma": 10,
+  "constitution": 10,
+  "base_dice_count": 1,
+  "base_dice_sides": 12,
+  "skills": [
+    {
+      "name": "Smash",
+      "description": "Accumulates 1 die per turn for 5 turns. On trigger deal dice damage (sum of all 5 stored dice). Slot clears after triggering.",
+      "associated_stat": "strength",
+      "dice_slots": 5,
+      "effect_type": "damage",
+      "special": null
+    }
+  ]
+}

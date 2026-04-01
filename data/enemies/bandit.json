@@ -1,0 +1,41 @@
+{
+  "enemy_id": "bandit",
+  "name": "Bandit",
+  "archetype": "bandit",
+  "tier": "common",
+  "max_health": 30,
+  "current_health": 30,
+  "strength": 10,
+  "dexterity": 10,
+  "intelligence": 10,
+  "charisma": 10,
+  "constitution": 10,
+  "base_dice_count": 3,
+  "base_dice_sides": 6,
+  "skills": [
+    {
+      "name": "Stab",
+      "description": "Deal dice damage to a single hero.",
+      "associated_stat": "strength",
+      "dice_slots": 1,
+      "effect_type": "damage",
+      "special": null
+    },
+    {
+      "name": "Block",
+      "description": "Absorb up to dice incoming damage. Vanishes start of next turn.",
+      "associated_stat": "constitution",
+      "dice_slots": 1,
+      "effect_type": "defend",
+      "special": null
+    },
+    {
+      "name": "Backstab",
+      "description": "Accumulates 1 die per turn after Stab and Block are fed. On trigger deal dice damage (sum of both stored dice).",
+      "associated_stat": "dexterity",
+      "dice_slots": 2,
+      "effect_type": "damage",
+      "special": null
+    }
+  ]
+}

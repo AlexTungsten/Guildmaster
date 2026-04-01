@@ -2,7 +2,7 @@ import unittest
 from unittest.mock import patch, MagicMock
 
 from hero.hero_entity import HeroEntity, HeroStatus, Skill, Stat
-from enemy.enemy import AttackPattern, Enemy
+from enemy.enemy import Enemy
 from combat.combat_engine import CombatEngine, CombatResult
 from game_runtime.event_bus import EventBus
 
@@ -67,37 +67,27 @@ def _make_weak_enemy(enemy_id: str = "e1") -> Enemy:
         name="Wisp",
         archetype="spirit",
         act=1,
-        strength=1,
-        dexterity=1,
-        intelligence=1,
-        charisma=1,
-        constitution=1,
         max_health=1,
         current_health=1,
         skills=[skill],
         base_dice_count=1,
-        pattern=AttackPattern([0]),
+        base_dice_sides=6,
     )
 
 
 def _make_strong_enemy(enemy_id: str = "e1") -> Enemy:
-    """An enemy with overwhelming damage output."""
+    """An enemy with overwhelming damage output — 3-slot skill filled every turn."""
     skill = _make_skill()
     return Enemy(
         enemy_id=enemy_id,
         name="Dragon",
         archetype="boss",
         act=3,
-        strength=30,
-        dexterity=30,
-        intelligence=30,
-        charisma=30,
-        constitution=30,
         max_health=500,
         current_health=500,
         skills=[skill],
-        base_dice_count=20,
-        pattern=AttackPattern([0]),
+        base_dice_count=3,   # exactly fills the 3-slot skill each turn
+        base_dice_sides=10,
     )
 
 
