@@ -1,0 +1,49 @@
+{
+  "archetype_id": "barbarian",
+  "name": "Barbarian",
+  "base_dice_count": 4,
+  "base_dice_sides": 12,
+  "item_slots": 1,
+  "stats": {
+    "strength": 14,
+    "dexterity": 12,
+    "intelligence": 7,
+    "charisma": 8,
+    "constitution": 15
+  },
+  "passives": [
+    {
+      "passive_id": "ironhide",
+      "name": "Ironhide",
+      "description": "Exhaustion locked dice are d6s instead of d4s",
+      "effect_type": "locked_dice_override",
+      "value": 6
+    }
+  ],
+  "skills": [
+    {
+      "name": "Bash",
+      "description": "Deal dice + STR damage to a single enemy",
+      "associated_stat": "strength",
+      "dice_slots": 1,
+      "effect_type": "damage",
+      "special": null
+    },
+    {
+      "name": "Blood Cleave",
+      "description": "Spend 5% current HP (temp HP first, floors real HP at 1). Deal dice + STR + 5 damage to all enemies.",
+      "associated_stat": "strength",
+      "dice_slots": 1,
+      "effect_type": "aoe",
+      "special": "blood_cleave"
+    },
+    {
+      "name": "Bloodletting",
+      "description": "Track all damage taken this turn including self-inflicted up to dice + CON. Convert tracked damage to temp HP at start of next turn. New application replaces existing temp HP.",
+      "associated_stat": "constitution",
+      "dice_slots": 2,
+      "effect_type": "defend",
+      "special": "bloodletting"
+    }
+  ]
+}

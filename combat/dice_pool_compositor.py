@@ -49,12 +49,14 @@ def compose_pool(hero: HeroEntity) -> List[Die]:
         normal_count = 0   # Full exhaustion can consume the entire pool
 
     pool: List[Die] = []
-    # Add locked dice first — they will be assigned to skills in priority order
+    # Add locked dice first — they will be assigned to skills in priority order.
+    # Locked die type comes from hero.locked_dice_sides (d4 by default, d6 with Ironhide).
     for _ in range(locked_count):
-        pool.append(Die(sides=4, is_locked=True))
-    # Add normal d10 dice after the locked dice
+        pool.append(Die(sides=hero.locked_dice_sides, is_locked=True))
+    # Add normal dice after the locked dice.
+    # Die type comes from hero.base_dice_sides (d10 by default, d12 for Barbarian).
     for _ in range(normal_count):
-        pool.append(Die(sides=10, is_locked=False))
+        pool.append(Die(sides=hero.base_dice_sides, is_locked=False))
     return pool
 
 

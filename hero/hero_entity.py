@@ -44,6 +44,7 @@ class Skill:
     associated_stat: Stat   # Stat modifier added to this skill's effectiveness roll
     dice_slots: int          # How many dice from the pool are reserved for this skill
     effect_type: str         # e.g. "damage", "heal", "aoe" — drives combat resolution
+    special: Optional[str] = None  # Optional special mechanic tag (e.g. "blood_cleave", "bloodletting")
 
     def to_dict(self) -> dict:
         return {
@@ -52,6 +53,7 @@ class Skill:
             "associated_stat": self.associated_stat.value,
             "dice_slots": self.dice_slots,
             "effect_type": self.effect_type,
+            "special": self.special,
         }
 
     @classmethod
@@ -62,6 +64,7 @@ class Skill:
             associated_stat=Stat(data["associated_stat"]),
             dice_slots=data["dice_slots"],
             effect_type=data["effect_type"],
+            special=data.get("special"),
         )
 
 
@@ -112,6 +115,10 @@ class HeroEntity:
 
     status: HeroStatus = HeroStatus.IDLE
     base_dice_count: int = 4   # Total dice in the hero's pool before exhaustion locks
+    base_dice_sides: int = 10        # Die type for normal dice (d10 default, d12 for Barbarian)
+    locked_dice_sides: int = 4       # Die type for exhaustion locked dice (d4 default, d6 with Ironhide)
+    temp_hp: int = 0                 # Temporary HP — absorbs damage before real HP
+    passives: List[dict] = field(default_factory=list)  # Named passives e.g. [{"passive_id": "ironhide", ...}]
 
     # ------------------------------------------------------------------
     # Internal stat helpers
@@ -306,6 +313,34 @@ class HeroEntity:
         return old
 
     # ------------------------------------------------------------------
+    # Passives
+    # ------------------------------------------------------------------
+
+    def has_passive(self, passive_id: str) -> bool:
+        """Return True if this hero has a passive with the given passive_id."""
+        return any(p.get("passive_id") == passive_id for p in self.passives)
+
+    # ------------------------------------------------------------------
+    # Temp HP and damage absorption
+    # ------------------------------------------------------------------
+
+    def absorb_damage(self, amount: int) -> int:
+        """
+        Apply incoming damage, absorbing through temp HP first.
+
+        Returns the damage amount that reached real HP (after temp HP absorption).
+        """
+        absorbed = min(self.temp_hp, amount)
+        self.temp_hp -= absorbed
+        remaining = amount - absorbed
+        self.current_health = max(0, self.current_health - remaining)
+        return remaining
+
+    def apply_temp_hp(self, amount: int) -> None:
+        """Set temp HP to amount, replacing any existing temp HP (does not stack)."""
+        self.temp_hp = amount
+
+    # ------------------------------------------------------------------
     # Serialization
     # ------------------------------------------------------------------
 
@@ -336,6 +371,10 @@ class HeroEntity:
             "equipped_items": self.equipped_items,
             "status": self.status.value,
             "base_dice_count": self.base_dice_count,
+            "base_dice_sides": self.base_dice_sides,
+            "locked_dice_sides": self.locked_dice_sides,
+            "temp_hp": self.temp_hp,
+            "passives": self.passives,
         }
 
     @classmethod
@@ -370,4 +409,8 @@ class HeroEntity:
             equipped_items=data.get("equipped_items", [None]),
             status=HeroStatus(data.get("status", "idle")),
             base_dice_count=data.get("base_dice_count", 4),
+            base_dice_sides=data.get("base_dice_sides", 10),
+            locked_dice_sides=data.get("locked_dice_sides", 4),
+            temp_hp=data.get("temp_hp", 0),
+            passives=data.get("passives", []),
         )

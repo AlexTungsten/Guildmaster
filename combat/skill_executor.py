@@ -23,6 +23,7 @@ class SkillResult:
     effectiveness: int   # Final power value: dice sum + stat modifier
     effect_type: str     # Passed through from skill.effect_type (e.g. "damage", "heal", "aoe")
     hits_all: bool       # True when effect_type == "aoe" (hits every living enemy)
+    special: Optional[str] = None  # Forwarded from skill.special (e.g. "blood_cleave", "bloodletting")
 
 
 def execute_skill(hero: HeroEntity, assignment: SkillAssignment) -> Optional[SkillResult]:
@@ -44,14 +45,20 @@ def execute_skill(hero: HeroEntity, assignment: SkillAssignment) -> Optional[Ski
         assignment.skill.associated_stat
     )
     effect_type = assignment.skill.effect_type
+    special = assignment.skill.special
     # AOE skills hit all living enemies simultaneously
     hits_all = effect_type == "aoe"
+
+    # Blood Cleave adds a flat +5 bonus to effectiveness
+    if special == "blood_cleave":
+        effectiveness += 5
 
     return SkillResult(
         skill=assignment.skill,
         effectiveness=effectiveness,
         effect_type=effect_type,
         hits_all=hits_all,
+        special=special,
     )
 
 

@@ -84,5 +84,34 @@ class TestComposePool(unittest.TestCase):
             self.assertLessEqual(val, die.sides)
 
 
+class TestComposePoolCustomDiceSides(unittest.TestCase):
+
+    def test_base_dice_sides_12_produces_d12_normal_dice(self):
+        # A hero with base_dice_sides=12 (Barbarian) should have d12 normal dice
+        hero = make_hero(exhaustion=0, base_dice_count=4, base_dice_sides=12)
+        pool = compose_pool(hero)
+        normal_dice = [d for d in pool if not d.is_locked]
+        self.assertTrue(len(normal_dice) > 0)
+        for die in normal_dice:
+            self.assertEqual(die.sides, 12)
+
+    def test_locked_dice_sides_6_ironhide_produces_d6_locked_dice(self):
+        # A hero with locked_dice_sides=6 (Ironhide) and exhaustion level 2+ should have d6 locked dice
+        hero = make_hero(exhaustion=25, base_dice_count=4, locked_dice_sides=6)
+        pool = compose_pool(hero)
+        locked_dice = [d for d in pool if d.is_locked]
+        self.assertTrue(len(locked_dice) > 0)
+        for die in locked_dice:
+            self.assertEqual(die.sides, 6)
+
+    def test_locked_dice_sides_6_does_not_affect_normal_dice(self):
+        # With Ironhide, only locked dice change; normal dice still use base_dice_sides
+        hero = make_hero(exhaustion=25, base_dice_count=4, locked_dice_sides=6, base_dice_sides=12)
+        pool = compose_pool(hero)
+        normal_dice = [d for d in pool if not d.is_locked]
+        for die in normal_dice:
+            self.assertEqual(die.sides, 12)
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -120,6 +120,11 @@ class CombatEngine:
         rounds: List[CombatRound] = []
         total_hero_damage_taken = 0
 
+        # Bloodletting state carried across rounds
+        prev_bloodletting_active: dict = {}   # hero_id -> bool
+        prev_damage_tracked: dict = {}        # hero_id -> int (damage accumulated)
+        prev_bloodletting_cap: dict = {}      # hero_id -> int (effectiveness cap)
+
         for round_number in range(1, max_rounds + 1):
             living_heroes = [h for h in heroes if h.current_health > 0]
             living_enemies = [e for e in enemies if e.is_alive]
@@ -128,10 +133,30 @@ class CombatEngine:
             if not living_heroes or not living_enemies:
                 break
 
+            # --- Apply Bloodletting conversion from PREVIOUS round ---
+            for hero in heroes:
+                hid = hero.hero_id
+                if prev_bloodletting_active.get(hid):
+                    tracked = prev_damage_tracked.get(hid, 0)
+                    cap = prev_bloodletting_cap.get(hid, 0)
+                    amount = min(tracked, cap)
+                    if amount > 0:
+                        hero.apply_temp_hp(amount)
+
+            # Reset Bloodletting tracking for this round
+            bloodletting_active: dict = {}
+            damage_tracked: dict = {}
+            bloodletting_cap: dict = {}
+
             all_hero_results: List[SkillResult] = []
             enemy_damage_dealt = 0
 
             # --- Hero phase ---
+            # First pass: identify which heroes have Bloodletting active this round
+            # (needs assignments, so we gather results first below)
+
+            round_self_damage: dict = {}  # hero_id -> self-inflicted blood_cleave cost
+
             for hero in living_heroes:
                 # Build and split the dice pool based on hero's exhaustion state
                 pool = compose_pool(hero)
@@ -147,6 +172,13 @@ class CombatEngine:
                 results = execute_all_skills(hero, assignments)
                 all_hero_results.extend(results)
 
+                # Detect active Bloodletting this round and record its cap
+                for result in results:
+                    if result.special == "bloodletting":
+                        bloodletting_active[hero.hero_id] = True
+                        damage_tracked[hero.hero_id] = 0
+                        bloodletting_cap[hero.hero_id] = result.effectiveness
+
                 # Apply damage from each skill result to the enemy targets
                 for result in results:
                     if result.effectiveness <= 0:
@@ -154,6 +186,21 @@ class CombatEngine:
                     living_now = [e for e in enemies if e.is_alive]
                     if not living_now:
                         break
+
+                    # Blood Cleave: pay HP cost before dealing AOE damage
+                    if result.special == "blood_cleave":
+                        cost = max(1, int(hero.current_health * 0.05))
+                        if hero.temp_hp >= cost:
+                            hero.temp_hp -= cost
+                        else:
+                            remaining_cost = cost - hero.temp_hp
+                            hero.temp_hp = 0
+                            hero.current_health = max(1, hero.current_health - remaining_cost)
+                        # Track self-damage for Bloodletting
+                        round_self_damage[hero.hero_id] = (
+                            round_self_damage.get(hero.hero_id, 0) + cost
+                        )
+
                     if result.hits_all:
                         # AOE: damage every living enemy equally
                         for enemy in living_now:
@@ -164,6 +211,11 @@ class CombatEngine:
                         target = rng.choice(living_now)
                         target.take_damage(result.effectiveness)
                         enemy_damage_dealt += result.effectiveness
+
+            # Accumulate self-inflicted damage into Bloodletting tracker
+            for hid, self_dmg in round_self_damage.items():
+                if bloodletting_active.get(hid):
+                    damage_tracked[hid] = damage_tracked.get(hid, 0) + self_dmg
 
             # --- Enemy phase ---
             all_enemy_results: List[SkillResult] = []
@@ -196,15 +248,22 @@ class CombatEngine:
                 )
                 all_enemy_results.append(enemy_result)
 
-                # Deal damage to a random living hero (enemies always single-target here)
+                # Deal damage to a random living hero using absorb_damage (temp HP first)
                 if effectiveness > 0:
                     target_hero = rng.choice(living_now)
-                    target_hero.current_health = max(
-                        0, target_hero.current_health - effectiveness
-                    )
-                    hero_damage_taken += effectiveness
+                    real_damage = target_hero.absorb_damage(effectiveness)
+                    hero_damage_taken += real_damage
+                    # Track damage that hit real HP for Bloodletting
+                    hid = target_hero.hero_id
+                    if bloodletting_active.get(hid):
+                        damage_tracked[hid] = damage_tracked.get(hid, 0) + real_damage
 
             total_hero_damage_taken += hero_damage_taken
+
+            # Save Bloodletting state for conversion at start of next round
+            prev_bloodletting_active = dict(bloodletting_active)
+            prev_damage_tracked = dict(damage_tracked)
+            prev_bloodletting_cap = dict(bloodletting_cap)
 
             combat_round = CombatRound(
                 round_number=round_number,
