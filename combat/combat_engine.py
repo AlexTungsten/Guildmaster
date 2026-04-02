@@ -429,15 +429,38 @@ class CombatEngine:
                         skill=skill,
                         effectiveness=effectiveness,
                         effect_type=skill.effect_type,
-                        hits_all=(skill.effect_type == "aoe"),
+                        hits_all=(skill.effect_type == "aoe" or skill.special == "golden_explosion"),
                     )
                     all_enemy_results.append(enemy_result)
 
                     if effectiveness <= 0:
                         continue
 
+                    # --- Boss: phase_advance has no combat effect ---
+                    if skill.special == "phase_advance":
+                        continue
+
+                    # --- Boss: golden_explosion — flat damage to all heroes ---
+                    if skill.special == "golden_explosion":
+                        for target_hero in list(living_now):
+                            real = _damage_hero(target_hero, effectiveness, barrier)
+                            hero_damage_taken += real
+                            if bl_active.get(target_hero.hero_id):
+                                bl_tracked[target_hero.hero_id] = bl_tracked.get(target_hero.hero_id, 0) + real
+                        continue
+
                     if skill.effect_type == "defend":
                         enemy.block += effectiveness
+                        # Boss: Gilded Shield/Armor — apply Paralyze to all heroes
+                        if skill.special in ("paralyze_all", "paralyze_all_2"):
+                            stacks = 2 if skill.special == "paralyze_all_2" else 1
+                            para = StatusEffect(
+                                status_type=StatusType.PARALYZE,
+                                duration=1,
+                                stacks=stacks,
+                            )
+                            for target_hero in list(living_now):
+                                target_hero.apply_status(para)
 
                     elif skill.effect_type == "aoe":
                         for target_hero in list(living_now):
@@ -448,6 +471,18 @@ class CombatEngine:
                             if bl_active.get(target_hero.hero_id):
                                 bl_tracked[target_hero.hero_id] = bl_tracked.get(target_hero.hero_id, 0) + real
                         _apply_skill_status(skill.special, effectiveness, list(living_now))
+
+                    # Boss: golden_wave — damage two random heroes
+                    elif skill.special == "golden_wave":
+                        num_targets = min(2, len(living_now))
+                        targets = rng.sample(living_now, num_targets)
+                        for target_hero in targets:
+                            dmg = _apply_weak(effectiveness, enemy.status_effects)
+                            dmg = _apply_vulnerable(dmg, target_hero.status_effects)
+                            real = _damage_hero(target_hero, dmg, barrier)
+                            hero_damage_taken += real
+                            if bl_active.get(target_hero.hero_id):
+                                bl_tracked[target_hero.hero_id] = bl_tracked.get(target_hero.hero_id, 0) + real
 
                     else:
                         target_hero = rng.choice(living_now)

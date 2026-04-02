@@ -1,0 +1,14 @@
+{
+  "act_1": {
+    "easy": [
+      {"enemies": ["goblin", "goblin"]},
+      {"enemies": ["bandit"]}
+    ],
+    "hard": [
+      {"enemies": ["bandit", "bandit_captain"]}
+    ],
+    "elite": [
+      {"enemies": ["goblin", "goblin", "ogre"]}
+    ]
+  }
+}

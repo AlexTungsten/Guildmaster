@@ -26,6 +26,8 @@ from economy.economy_controller import EconomyController
 from ui.action_dispatcher import ActionDispatcher
 from ui.renderers.map_renderer import render_map_screen, render_boss_timer_bar
 from ui.renderers.hero_renderer import render_hero_panel
+from quest.quest_executor import QuestExecutor
+from combat.combat_engine import CombatEngine
 
 
 class GameLoop:
@@ -175,6 +177,16 @@ class GameLoop:
         economy = EconomyController(event_bus, starting_gold)
         dispatcher = ActionDispatcher(event_bus)
 
+        # Quest executor: wires player.assign_quest -> pipeline -> rewards -> hero reset
+        combat_engine = CombatEngine(event_bus)
+        quest_executor = QuestExecutor(
+            event_bus=event_bus,
+            map_state=overworld.map_state,
+            roster=economy.roster,
+            ledger=economy.ledger,
+            combat_engine=combat_engine,
+        )
+
         loop = cls(
             event_bus=event_bus,
             time_engine=time_engine,
@@ -183,6 +195,7 @@ class GameLoop:
             economy=economy,
             dispatcher=dispatcher,
         )
+        loop._quest_executor = quest_executor
 
         # Wire event subscriptions for screen transitions (these capture `loop` via closure)
         def _on_view_heroes(data):

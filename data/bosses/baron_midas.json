@@ -1,0 +1,140 @@
+{
+  "boss_id": "baron_midas",
+  "name": "Baron Midas",
+  "archetype": "boss",
+  "tier": "act_1_boss",
+  "base_health": 100,
+  "gold_stolen_hp_cap": 566,
+  "strength": 10,
+  "dexterity": 10,
+  "intelligence": 10,
+  "charisma": 10,
+  "constitution": 10,
+  "starting_dice_count": 4,
+  "starting_dice_sides": 4,
+  "phases": [
+    {
+      "phase": 1,
+      "skills": [
+        {
+          "name": "Steal",
+          "description": "Deal dice damage to a single hero. Reduce Skill 3 remaining cost by dice value.",
+          "associated_stat": "strength",
+          "dice_slots": 1,
+          "effect_type": "damage",
+          "special": "gold_steal"
+        },
+        {
+          "name": "Gilded Shield",
+          "description": "Gain dice block.",
+          "associated_stat": "constitution",
+          "dice_slots": 1,
+          "effect_type": "defend",
+          "special": null
+        },
+        {
+          "name": "I NEED GOLD",
+          "description": "Upgrade all skills to Phase 2. Gain 1 extra die permanently.",
+          "associated_stat": "strength",
+          "dice_slots": 0,
+          "effect_type": "phase_transition",
+          "special": "phase_advance",
+          "accumulation_cost": 15
+        }
+      ]
+    },
+    {
+      "phase": 2,
+      "dice_count_bonus": 1,
+      "skills": [
+        {
+          "name": "Steal",
+          "description": "Deal dice damage to a single hero. Reduce Skill 3 remaining cost by dice value.",
+          "associated_stat": "strength",
+          "dice_slots": 2,
+          "effect_type": "damage",
+          "special": "gold_steal"
+        },
+        {
+          "name": "Gilded Shield",
+          "description": "Gain dice block. Apply 1 Paralyze to all heroes.",
+          "associated_stat": "constitution",
+          "dice_slots": 1,
+          "effect_type": "defend",
+          "special": "paralyze_all"
+        },
+        {
+          "name": "I NEED MORE GOLD",
+          "description": "Upgrade all skills to Phase 3. All dice permanently upgrade to d8s.",
+          "associated_stat": "strength",
+          "dice_slots": 0,
+          "effect_type": "phase_transition",
+          "special": "phase_advance",
+          "accumulation_cost": 20
+        }
+      ]
+    },
+    {
+      "phase": 3,
+      "dice_sides_override": 8,
+      "skills": [
+        {
+          "name": "Steal",
+          "description": "Deal dice damage to a single hero. Reduce Skill 3 remaining cost by dice value.",
+          "associated_stat": "strength",
+          "dice_slots": 2,
+          "effect_type": "damage",
+          "special": "gold_steal"
+        },
+        {
+          "name": "Gilded Shield",
+          "description": "Gain dice block. Apply 1 Paralyze to all heroes.",
+          "associated_stat": "constitution",
+          "dice_slots": 1,
+          "effect_type": "defend",
+          "special": "paralyze_all"
+        },
+        {
+          "name": "I NEED EVEN MORE GOLD",
+          "description": "Upgrade all skills to Phase 4. Gain permanent Advantage.",
+          "associated_stat": "strength",
+          "dice_slots": 0,
+          "effect_type": "phase_transition",
+          "special": "phase_advance",
+          "accumulation_cost": 40
+        }
+      ]
+    },
+    {
+      "phase": 4,
+      "permanent_advantage": true,
+      "skills": [
+        {
+          "name": "Golden Wave",
+          "description": "Deal dice damage to two random heroes. Reduce Skill 3 remaining cost by dice value.",
+          "associated_stat": "strength",
+          "dice_slots": 2,
+          "effect_type": "damage",
+          "special": "golden_wave"
+        },
+        {
+          "name": "Gilded Armor",
+          "description": "Gain dice block. Apply 2 Paralyze to all heroes.",
+          "associated_stat": "constitution",
+          "dice_slots": 1,
+          "effect_type": "defend",
+          "special": "paralyze_all_2"
+        },
+        {
+          "name": "Golden Explosion",
+          "description": "Deal 30 damage to all heroes.",
+          "associated_stat": "strength",
+          "dice_slots": 0,
+          "effect_type": "phase_transition",
+          "special": "golden_explosion",
+          "accumulation_cost": 50
+        }
+      ]
+    }
+  ]
+}
