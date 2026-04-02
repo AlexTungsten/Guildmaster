@@ -1,0 +1,10 @@
+{
+  "item_id": "greater_heal",
+  "name": "Greater Heal",
+  "category": "conditional",
+  "cost": 30,
+  "effect": "heal_on_low_hp",
+  "trigger_threshold": 0.50,
+  "value": 0.30,
+  "description": "When HP drops to 50% or below, heal for 30% of max HP. Consumed on use."
+}

@@ -1,0 +1,10 @@
+{
+  "item_id": "str_potion",
+  "name": "Strength Potion",
+  "category": "passive",
+  "cost": 20,
+  "effect": "stat_boost",
+  "stat": "strength",
+  "value": 2,
+  "description": "+2 STR for quest duration. Consumed at quest end."
+}

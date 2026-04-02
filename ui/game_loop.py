@@ -28,6 +28,7 @@ from ui.renderers.map_renderer import render_map_screen, render_boss_timer_bar
 from ui.renderers.hero_renderer import render_hero_panel
 from quest.quest_executor import QuestExecutor
 from combat.combat_engine import CombatEngine
+from ai.item_ai import ItemAI
 
 
 class GameLoop:
@@ -176,6 +177,10 @@ class GameLoop:
         overworld = OverworldController.create(event_bus)
         economy = EconomyController(event_bus, starting_gold)
         dispatcher = ActionDispatcher(event_bus)
+
+        # Item AI: auto-buys potions on shop.spawned and equips them on player.assign_quest.
+        # Created BEFORE QuestExecutor so the equip subscription fires before the pipeline runs.
+        ItemAI(event_bus=event_bus, economy=economy, overworld=overworld)
 
         # Quest executor: wires player.assign_quest -> pipeline -> rewards -> hero reset
         combat_engine = CombatEngine(event_bus)

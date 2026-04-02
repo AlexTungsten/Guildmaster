@@ -17,6 +17,7 @@ from economy.roster_manager import RosterManager
 from economy.guild_inventory import GuildInventory
 from economy.shop_actions import ShopActions
 from economy.shop_inventory import ShopInventory
+from item.item_catalog import get_item
 from game_runtime.event_bus import EventBus
 
 
@@ -28,6 +29,44 @@ class EconomyController:
         self._inventory = GuildInventory(event_bus=event_bus, max_size=inventory_max)
         # ShopActions is wired to share the same ledger and roster instances
         self._shop_actions = ShopActions(event_bus=event_bus, ledger=self._ledger, roster=self._roster)
+
+        # When an item is bought from a shop, add it to the guild inventory
+        def _on_item_bought(data: dict) -> None:
+            item_id = data.get("item_id", "")
+            item_def = get_item(item_id)
+            if item_def:
+                self._inventory.add_item(
+                    item_id=item_def["item_id"],
+                    name=item_def["name"],
+                    category=item_def["category"],
+                )
+
+        event_bus.subscribe("shop.item_bought", _on_item_bought)
+
+        # When the player equips an item, move it from inventory to the hero's slot
+        def _on_equip_item(data: dict) -> None:
+            hero_id = data.get("hero_id", "")
+            item_id = data.get("item_id", "")
+            hero = self._roster.get_hero(hero_id)
+            if hero is None:
+                event_bus.publish("equip.failed", {"reason": f"Hero '{hero_id}' not found"})
+                return
+            if self._inventory.get_item(item_id) is None:
+                event_bus.publish("equip.failed", {"reason": f"Item '{item_id}' not in inventory"})
+                return
+            # Find the first empty equipped slot
+            empty_slot = next(
+                (i for i, s in enumerate(hero.equipped_items) if s is None), None
+            )
+            if empty_slot is None:
+                event_bus.publish("equip.failed", {"reason": f"Hero '{hero_id}' has no empty item slots"})
+                return
+            # Move item: remove from inventory, place in hero slot
+            self._inventory.remove_item(item_id)
+            hero.equipped_items[empty_slot] = item_id
+            event_bus.publish("equip.success", {"hero_id": hero_id, "item_id": item_id, "slot": empty_slot})
+
+        event_bus.subscribe("player.equip_item", _on_equip_item)
 
     # --- Public read-only accessors for sub-systems ---
 
@@ -73,14 +112,14 @@ class EconomyController:
         """
         Restore an EconomyController from a serialized dict.
 
-        Uses __new__ to skip __init__ so the sub-systems are deserialized
-        individually rather than re-initialized with default values.
+        Constructs via __init__ with zero starting gold (the ledger is
+        replaced immediately after), so all event subscriptions are wired
+        correctly, then overwrites the sub-systems with deserialized data.
         """
-        controller = cls.__new__(cls)
-        controller._event_bus = event_bus
+        controller = cls(event_bus=event_bus, starting_gold=0)
         controller._ledger = GoldLedger.from_dict(data["ledger"], event_bus)
         controller._roster = RosterManager.from_dict(data["roster"], event_bus)
         controller._inventory = GuildInventory.from_dict(data["inventory"], event_bus)
-        # ShopActions is always re-wired to the freshly deserialized ledger/roster
+        # ShopActions must reference the freshly deserialized ledger/roster
         controller._shop_actions = ShopActions(event_bus=event_bus, ledger=controller._ledger, roster=controller._roster)
         return controller

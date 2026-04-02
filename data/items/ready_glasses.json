@@ -1,0 +1,8 @@
+{
+  "item_id": "ready_glasses",
+  "name": "Ready Glasses",
+  "category": "passive",
+  "cost": 20,
+  "effect": "advantage_first_round",
+  "description": "Start combat with Advantage (first round only). Consumed at quest end."
+}

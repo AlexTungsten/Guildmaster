@@ -11,6 +11,7 @@ Supported commands:
   shop <shop_id>                              — Open a shop screen.
   hire <hero_id>                              — Hire a hero from the active shop.
   buy <item_id>                               — Buy an item from the active shop.
+  equip <hero_id> <item_id>                  — Equip an item from guild inventory to a hero.
   train <skill_id> <hero_id> <slot>          — Train a skill for a hero (slot 0–2).
   leave                                       — Exit the current shop.
   heroes                                      — Switch to the hero panel view.
@@ -75,6 +76,15 @@ class ActionDispatcher:
             item_id = parts[1]
             self._event_bus.publish("player.buy_item", {"item_id": item_id})
             return (True, "OK: buy")
+
+        elif command == "equip":
+            # equip <hero_id> <item_id>
+            if len(parts) < 3:
+                return (False, f"Unknown command: {raw_input}")
+            hero_id = parts[1]
+            item_id = parts[2]
+            self._event_bus.publish("player.equip_item", {"hero_id": hero_id, "item_id": item_id})
+            return (True, "OK: equip")
 
         elif command == "train":
             # train <skill_id> <hero_id> <slot>

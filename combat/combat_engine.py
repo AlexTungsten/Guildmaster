@@ -42,6 +42,7 @@ from combat.status_effects import (
     has_status, get_status, has_any_debuff,
 )
 from game_runtime.event_bus import EventBus
+from item.item_applicator import apply_ready_glasses, apply_heal_potions, check_greater_heal
 
 
 # ---------------------------------------------------------------------------
@@ -186,6 +187,9 @@ class CombatEngine:
     ) -> CombatResult:
 
         rng = random.Random(seed) if seed is not None else random.Random()
+
+        # Apply Ready Glasses: grant Advantage (duration=1) before round 1
+        apply_ready_glasses(heroes)
 
         rounds: List[CombatRound] = []
         total_hero_damage_taken = 0
@@ -407,6 +411,9 @@ class CombatEngine:
                 if bl_active.get(hid):
                     bl_tracked[hid] = bl_tracked.get(hid, 0) + self_dmg
 
+            # Heal Potion: +5 HP for every living hero wearing one (end of hero phase)
+            apply_heal_potions([h for h in heroes if h.current_health > 0])
+
             # ==============================================================
             # ENEMY PHASE
             # ==============================================================
@@ -447,6 +454,7 @@ class CombatEngine:
                             hero_damage_taken += real
                             if bl_active.get(target_hero.hero_id):
                                 bl_tracked[target_hero.hero_id] = bl_tracked.get(target_hero.hero_id, 0) + real
+                            check_greater_heal(target_hero)
                         continue
 
                     if skill.effect_type == "defend":
@@ -470,6 +478,7 @@ class CombatEngine:
                             hero_damage_taken += real
                             if bl_active.get(target_hero.hero_id):
                                 bl_tracked[target_hero.hero_id] = bl_tracked.get(target_hero.hero_id, 0) + real
+                            check_greater_heal(target_hero)
                         _apply_skill_status(skill.special, effectiveness, list(living_now))
 
                     # Boss: golden_wave — damage two random heroes
@@ -483,6 +492,7 @@ class CombatEngine:
                             hero_damage_taken += real
                             if bl_active.get(target_hero.hero_id):
                                 bl_tracked[target_hero.hero_id] = bl_tracked.get(target_hero.hero_id, 0) + real
+                            check_greater_heal(target_hero)
 
                     else:
                         target_hero = rng.choice(living_now)
@@ -492,6 +502,7 @@ class CombatEngine:
                         hero_damage_taken += real
                         if bl_active.get(target_hero.hero_id):
                             bl_tracked[target_hero.hero_id] = bl_tracked.get(target_hero.hero_id, 0) + real
+                        check_greater_heal(target_hero)
                         _apply_skill_status(skill.special, effectiveness, [target_hero])
 
                 # Enemy end-of-turn: tick statuses, deal Burn/Poison damage

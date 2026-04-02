@@ -16,16 +16,13 @@ from typing import List, Optional
 
 from overworld.map_state import MapState, ShopSlot
 from game_runtime.event_bus import EventBus
+from item.item_catalog import all_items as _catalog_items
 
 
-# --- Static merchandise pools ---
-
+# Item pool built from the live catalog so new items appear in shops automatically
 ITEM_POOL: List[dict] = [
-    {"item_id": "item_001", "name": "Health Potion", "category": "consumable", "cost": 25},
-    {"item_id": "item_002", "name": "Iron Shield", "category": "armor", "cost": 80},
-    {"item_id": "item_003", "name": "Silver Dagger", "category": "weapon", "cost": 60},
-    {"item_id": "item_004", "name": "Mana Crystal", "category": "consumable", "cost": 40},
-    {"item_id": "item_005", "name": "Leather Boots", "category": "armor", "cost": 35},
+    {"item_id": i["item_id"], "name": i["name"], "category": i["category"], "cost": i["cost"]}
+    for i in _catalog_items()
 ]
 
 HERO_POOL: List[dict] = [
@@ -67,8 +64,8 @@ class ShopSpawner:
             current_tick - self._last_spawn_tick >= self._spawn_interval
             and len(map_state.active_shops) < 2  # Hard cap of 2 simultaneous shops
         ):
-            # Sample 2 random items and 1 hero/training offering for the shop inventory
-            items = self._rng.sample(ITEM_POOL, 2)
+            # Sample 3 random items and 1 hero/training offering for the shop inventory
+            items = self._rng.sample(ITEM_POOL, min(3, len(ITEM_POOL)))
             hero = self._rng.choice(HERO_POOL)
             training = self._rng.choice(TRAINING_POOL)
             inventory = list(items) + [hero, training]

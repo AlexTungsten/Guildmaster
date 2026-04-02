@@ -1,0 +1,10 @@
+{
+  "item_id": "dex_potion",
+  "name": "Dexterity Potion",
+  "category": "passive",
+  "cost": 20,
+  "effect": "stat_boost",
+  "stat": "dexterity",
+  "value": 2,
+  "description": "+2 DEX for quest duration. Consumed at quest end."
+}

@@ -1,0 +1,9 @@
+{
+  "item_id": "heal_potion",
+  "name": "Heal Potion",
+  "category": "passive",
+  "cost": 20,
+  "effect": "heal_per_turn",
+  "value": 5,
+  "description": "Heal +5 HP at the end of each combat turn. Consumed at quest end."
+}

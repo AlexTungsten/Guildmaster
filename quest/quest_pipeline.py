@@ -25,6 +25,7 @@ from quest.stat_check_resolver import resolve_stat_check
 from quest.reward_distributor import distribute_rewards, DistributionResult
 from enemy.enemy import Enemy
 from combat.combat_engine import CombatEngine, CombatResult
+from item.item_applicator import apply_passive_items, remove_passive_items
 from game_runtime.event_bus import EventBus
 
 
@@ -57,7 +58,11 @@ class QuestPipeline:
         heroes  : Heroes assigned to the quest (their stats are mutated).
         enemies : Required for COMBAT quests; ignored for STAT_CHECK quests.
         """
-        # Step 1: Travel phase — may add XP, damage, or exhaustion to heroes
+        # Step 1: Apply passive item effects (stat boosts active for entire quest)
+        for hero in heroes:
+            apply_passive_items(hero)
+
+        # Step 2: Travel phase — may add XP, damage, or exhaustion to heroes
         quest.status = QuestStatus.TRAVELING
         travel_result = roll_travel_events(heroes, quest.travel_time)
         apply_travel_outcomes(heroes, travel_result)
@@ -98,7 +103,11 @@ class QuestPipeline:
         if victory:
             distribution = distribute_rewards(quest, heroes, damage_taken)
 
-        # Step 5: Mark complete and notify listeners
+        # Step 5: Consume all equipped items (passive destroyed, conditional already consumed)
+        for hero in heroes:
+            remove_passive_items(hero)
+
+        # Step 6: Mark complete and notify listeners
         quest.status = QuestStatus.COMPLETE
 
         result = QuestPipelineResult(
