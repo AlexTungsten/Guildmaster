@@ -54,7 +54,7 @@ class MapState:
     boss: Optional[BossSlot] = None
     current_act: int = 1
     act_start_tick: int = 0
-    boss_timer_duration: int = 600   # Ticks from act_start until the boss is revealed
+    boss_timer_duration: int = 10000  # Ticks from act_start until the boss is revealed
 
     def add_quest(self, quest: Quest) -> None:
         """Register a newly spawned quest on the map."""

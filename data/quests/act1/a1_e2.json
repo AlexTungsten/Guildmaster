@@ -8,7 +8,7 @@
   "max_heroes": 3,
   "travel_time": 15,
   "resolution_time": 30,
-  "expiration_time": 50,
+  "expiration_time": 100,
   "base_exhaustion": 6.0,
   "reward": {"gold": 15, "xp": 25},
   "stat_checks": [{"stat": "intelligence", "dc": 10}]

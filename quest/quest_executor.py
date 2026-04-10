@@ -99,12 +99,12 @@ class QuestExecutor:
             return
 
         heroes: List[HeroEntity] = []
-        for name in hero_ids:
-            hero = self._roster.get_hero_by_name(name)
+        for token in hero_ids:
+            hero = self._roster.get_hero(token) or self._roster.get_hero_by_name(token)
             if hero is None:
                 self._event_bus.publish("quest.error", {
                     "quest_id": quest_id,
-                    "reason": f"Hero '{name}' not found in roster",
+                    "reason": f"Hero '{token}' not found in roster",
                 })
                 return
             heroes.append(hero)

@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Guildmaster</title>
+  <link rel="stylesheet" href="/static/style.css" />
+</head>
+<body>
+<div id="app">
+
+  <!-- Top bar -->
+  <header id="topbar">
+    <h1>Guildmaster</h1>
+    <div class="stat-badge">
+      <span>Gold</span>
+      <span class="val" id="gold-display">—</span>
+    </div>
+    <div class="stat-badge">
+      <span>Tick</span>
+      <span class="val" id="tick-display">—</span>
+    </div>
+    <div id="boss-timer-wrap">
+      <span id="boss-timer-label">Boss in —</span>
+      <div id="boss-timer-bar-outer">
+        <div id="boss-timer-bar-fill" style="width:100%"></div>
+      </div>
+    </div>
+    <span id="paused-badge">⏸ PAUSED</span>
+    <div id="conn-dot" title="Disconnected"></div>
+  </header>
+
+  <!-- Main area -->
+  <main id="main">
+    <div id="quest-area">
+      <div class="panel-col">
+        <div class="panel-title">
+          Quest List (<span id="avail-count">0</span>)
+          <span class="panel-hint">— click a quest to assign heroes</span>
+        </div>
+        <div id="boss-banner" class="boss-banner"></div>
+        <div id="quest-available" class="quest-list"></div>
+      </div>
+      <div class="panel-col">
+        <div class="panel-title">Active Quests (<span id="active-count">0</span>)</div>
+        <div id="quest-active" class="quest-list"></div>
+      </div>
+    </div>
+
+    <div id="hero-strip">
+      <div class="strip-label">Heroes</div>
+      <div id="hero-strip-cards"></div>
+    </div>
+  </main>
+
+  <!-- Quest detail panel -->
+  <div id="quest-overlay" class="hidden">
+    <div id="quest-panel">
+
+      <div id="qp-header">
+        <div>
+          <div id="qp-title"></div>
+          <div id="qp-meta"></div>
+        </div>
+        <button id="qp-close">✕</button>
+      </div>
+
+      <div id="qp-body">
+        <div id="qp-description"></div>
+        <div id="qp-rewards"></div>
+
+        <!-- Two-column: available heroes | assigned heroes -->
+        <div id="qp-columns">
+          <div class="qp-col">
+            <div class="qp-col-label">Available Heroes <span class="qp-col-hint">click to add →</span></div>
+            <div id="qp-available-heroes"></div>
+          </div>
+          <div class="qp-col">
+            <div class="qp-col-label">Assigned <span id="qp-hero-count"></span></div>
+            <div id="qp-assigned-heroes">
+              <div id="qp-empty-hint">No heroes assigned yet</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div id="qp-footer">
+        <button id="qp-cancel">Cancel</button>
+        <button id="qp-send" disabled>Send on Quest</button>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- Command bar -->
+  <div id="cmdbar">
+    <input id="cmd-input" type="text" placeholder="assign <quest_id> <hero_id> ..." spellcheck="false" />
+    <button id="btn-send">Send</button>
+    <span id="feedback"></span>
+  </div>
+
+</div>
+<script src="/static/app.js"></script>
+</body>
+</html>

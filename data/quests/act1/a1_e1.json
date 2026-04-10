@@ -8,7 +8,7 @@
   "max_heroes": 3,
   "travel_time": 20,
   "resolution_time": 40,
-  "expiration_time": 50,
+  "expiration_time": 100,
   "base_exhaustion": 8.0,
   "reward": {"gold": 20, "xp": 30}
 }

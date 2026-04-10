@@ -252,9 +252,43 @@ Baron Midas is the Act 1 boss. His HP scales with gold stolen during the act (ba
 ### Requirements
 
 - Python 3.10 or later
-- No external dependencies — standard library only
+- Standard library only for the core game
+- `fastapi` and `uvicorn[standard]` for the web GUI server
 
-### Interactive Mode
+### Web GUI (Recommended)
+
+A browser-based UI built with FastAPI and WebSockets. The server runs the game tick loop and pushes state to the browser in real time.
+
+**Install dependencies:**
+```bash
+pip install fastapi "uvicorn[standard]"
+```
+
+**Start the server:**
+```bash
+uvicorn server:app --reload
+```
+
+Then open `http://localhost:8000` in your browser.
+
+**Features:**
+- **Map tab** — Quest List (available) and Active Quests side by side
+- **Heroes tab** — Full hero cards with HP bar, stats, exhaustion, skills, and status
+- **Click-to-assign** — Click a quest to select it, then click idle heroes on the Heroes tab, then hit Assign
+- **Boss timer** — Progress bar counts down in the top bar; turns red when the boss appears
+- **Command bar** — Manual `assign <quest_id> <hero_id>` input also available
+
+**Files:**
+| File | Description |
+|------|-------------|
+| `server.py` | FastAPI app, WebSocket endpoint, game tick loop |
+| `static/index.html` | UI shell |
+| `static/style.css` | Dark fantasy theme |
+| `static/app.js` | WebSocket client, rendering, and assignment logic |
+
+---
+
+### Interactive Mode (Terminal)
 
 ```bash
 python main.py
