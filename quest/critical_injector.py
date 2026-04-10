@@ -62,7 +62,7 @@ def build_default_injector(act_start_tick: int) -> "CriticalInjector":
             base_exhaustion=20.0,
             reward=Reward(gold=100, xp=150),
             # If this quest expires, the boss gains a buff worth +10 power
-            consequence=Consequence(type="boss_buff", data={"buff_amount": 10}),
+            consequence=Consequence(type="boss_buff", data={"buff": "Boss Empowered (+10 power)"}),
         ),
     )
     # Window 2: final stand at act_start + 400 ticks — last chance to weaken the boss
@@ -81,7 +81,7 @@ def build_default_injector(act_start_tick: int) -> "CriticalInjector":
             base_exhaustion=30.0,
             reward=Reward(gold=200, xp=300),
             # If this quest expires, the boss gains a larger buff worth +25 power
-            consequence=Consequence(type="boss_buff", data={"buff_amount": 25}),
+            consequence=Consequence(type="boss_buff", data={"buff": "Boss Enraged (+25 power)"}),
         ),
     )
     return CriticalInjector(windows=[window1, window2])

@@ -1,4 +1,4 @@
-# Guildmaster -- Roguelike Guild Management Game
+# Guildmaster — Roguelike Guild Management Game
 
 You are a guild leader. Heroes need quests, quests need heroes, and a boss is always on the clock.
 
@@ -33,15 +33,15 @@ Guildmaster/
 │   ├── status_effects.py          # Status effect system: Poison, Burn, Bleed, Paralyze, Weak, etc.
 │   └── combat_engine.py           # Round-by-round combat loop with pre-simulate and boss support
 │
-├── quest/                  # Quest model, pool draw, critical injection, pipeline, and executor
+├── quest/                  # Quest model, pool draw, travel phases, and tick-based executor
 │   ├── quest_model.py          # Quest dataclass: type, difficulty, status, rewards, consequences
-│   ├── quest_pool.py           # Weighted act pools (easy 60%, hard 30%, elite 10%)
+│   ├── quest_pool.py           # Loads quest pools from data/quests/; weighted draw (easy 60%, hard 30%, elite 10%)
 │   ├── critical_injector.py    # Timed injection of story-critical quests per act
 │   ├── travel_phase.py         # Random travel events affecting hero HP, XP, and exhaustion
 │   ├── stat_check_resolver.py  # d20 stat checks — passes if any hero in the party succeeds
 │   ├── reward_distributor.py   # XP, exhaustion, and gold distribution after quest success
 │   ├── quest_pipeline.py       # Orchestrates travel → resolution → rewards → completion
-│   └── quest_executor.py       # Wires player.assign_quest events to the full pipeline
+│   └── quest_executor.py       # Tick-based quest lifecycle using TimeEngine.schedule()
 │
 ├── overworld/              # Map state, quest/shop spawning, boss timer, expiration tracking
 │   ├── map_state.py            # Live map snapshot: active quests, shops, boss slot, act timing
@@ -56,7 +56,7 @@ Guildmaster/
 │   ├── gold_ledger.py          # Authoritative gold balance with full transaction history
 │   ├── shop_inventory.py       # Typed item/hero/training listings for one shop visit
 │   ├── shop_actions.py         # Executes hire, buy, and train purchases with validation
-│   ├── roster_manager.py       # Hero roster with cap enforcement and exhaustion recovery
+│   ├── roster_manager.py       # Hero roster with cap enforcement and name/ID lookup
 │   ├── guild_inventory.py      # Shared guild item storage with stackable quantities
 │   └── economy_controller.py   # Top-level facade connecting all economy sub-systems
 │
@@ -64,14 +64,18 @@ Guildmaster/
 │   ├── archetypes/             # Hero class definitions (barbarian, cleric, mage, rogue)
 │   ├── enemies/                # Enemy templates (goblin, bandit, bandit_captain, ogre)
 │   ├── bosses/                 # Boss definitions (baron_midas)
-│   └── encounters.json         # Difficulty-to-enemy spawn table per act
+│   ├── encounters.json         # Difficulty-to-enemy spawn table per act
+│   └── quests/                 # Quest definitions split by act
+│       ├── act1/               # 7 quests (4 easy, 2 hard, 1 elite)
+│       ├── act2/               # 6 quests (3 easy, 2 hard, 1 elite)
+│       └── act3/               # 6 quests (3 easy, 2 hard, 1 elite)
 │
 ├── ui/                     # Pure rendering layer and the main game loop
 │   ├── action_dispatcher.py    # Parses text commands and publishes player events to the bus
 │   ├── game_loop.py            # Wires all systems; drives tick(), handle_input(), and rendering
 │   └── renderers/
 │       ├── draft_renderer.py   # Hero draft and run-start screens
-│       ├── map_renderer.py     # Overworld map HUD with quests, shops, boss, and heroes
+│       ├── map_renderer.py     # Overworld map HUD: quest list, active quests, shops, heroes
 │       ├── hero_renderer.py    # Hero panel summary and full per-hero detail view
 │       ├── combat_renderer.py  # Combat screen with HP bars, dice pools, and pre-sim projection
 │       └── shop_renderer.py    # Merchant shop screen with three purchase categories
@@ -89,16 +93,16 @@ The project is organized into **6 implementation layers**, built bottom-up so th
 1. **game_runtime** — EventBus, TimeEngine, StateManager. No game concepts; pure infrastructure.
 2. **hero / enemy** — Domain entities. No references to quests, economy, or UI.
 3. **combat** — Uses hero and enemy entities. Fully deterministic when given a seed.
-4. **quest** — Uses combat and hero. Implements the full travel→resolution→reward pipeline.
+4. **quest** — Uses combat and hero. Implements the full travel → resolution → reward pipeline.
 5. **overworld / economy** — Use quest and hero. Manage the map, roster, and gold.
 6. **ui** — Uses everything above. Pure rendering functions plus the top-level GameLoop.
 
-### Design principles
+### Design Principles
 
-- **Event-driven**: systems publish and subscribe rather than calling each other directly. This means any module can be replaced or extended without touching other modules.
-- **Data-driven**: hero archetypes, enemy templates, boss definitions, and encounter tables are all JSON files in the `data/` directory. Swapping content requires only changing JSON.
-- **Single source of truth**: the MapState owns all live map data; the GoldLedger owns the gold balance; the RosterManager owns the hero list. No other module holds a second copy.
-- **Every module independently tested**: each layer can be instantiated and exercised in isolation using `unittest`.
+- **Event-driven**: systems publish and subscribe rather than calling each other directly. Any module can be replaced or extended without touching other modules.
+- **Data-driven**: hero archetypes, enemy templates, boss definitions, quest definitions, and encounter tables are all JSON files in `data/`. Adding a new quest requires only a new JSON file — no code changes.
+- **Single source of truth**: MapState owns all live map data; GoldLedger owns the gold balance; RosterManager owns the hero list. No second copies.
+- **Tick-based time**: quest phases (travel, resolution, return) take real ticks to complete via `TimeEngine.schedule()`. Heroes are visibly busy while on a quest and recover exhaustion only when truly idle.
 
 ---
 
@@ -106,7 +110,51 @@ The project is organized into **6 implementation layers**, built bottom-up so th
 
 ### Time System
 
-The `TimeEngine` drives all time-sensitive logic via simulated ticks. Callers advance the clock with `advance(n)` and schedule future events with `schedule(ticks_from_now, event_type)`. Pausing uses a named-reason stack: multiple systems can each hold a pause without accidentally resuming each other.
+The `TimeEngine` drives all time-sensitive logic via simulated ticks. Callers advance the clock with `advance(n)` and schedule future events with `schedule(ticks_from_now, event_type, data)`. Pausing uses a named-reason stack so multiple systems can each hold a pause without accidentally resuming each other.
+
+### Quest Lifecycle
+
+Quests go through three timed phases after a hero is assigned:
+
+| Phase | Duration | Hero Status | Quest Status |
+|-------|----------|-------------|--------------|
+| Travel there | `travel_time` ticks | TRAVELING | ASSIGNED |
+| Resolution | `resolution_time` ticks | ON_QUEST | RESOLVING |
+| Travel back | `travel_time` ticks | TRAVELING | RESOLVING |
+| Home | — | IDLE | removed from map |
+
+Each phase is scheduled via `TimeEngine.schedule()` so time genuinely passes. Gold is only credited when heroes arrive back home.
+
+### Quest Data
+
+All quest content lives in `data/quests/act{N}/`. Each file is a JSON object matching the `Quest` model fields. Dropping a new `.json` file into the right act folder is enough to add it to the pool — `quest_pool.py` scans the directory on startup.
+
+**Quest fields:**
+
+| Field | Description |
+|-------|-------------|
+| `quest_id` | Unique identifier |
+| `title` | Display name |
+| `description` | Flavour text |
+| `quest_type` | `"combat"` or `"stat_check"` |
+| `difficulty` | `"easy"`, `"hard"`, or `"elite"` |
+| `required_heroes` | Minimum heroes needed |
+| `max_heroes` | Maximum heroes allowed |
+| `travel_time` | Ticks to travel each way |
+| `resolution_time` | Ticks the quest itself takes |
+| `expiration_time` | Ticks before an unassigned quest expires (default 50) |
+| `base_exhaustion` | Exhaustion added to each hero on completion |
+| `reward` | `{"gold": N, "xp": N}` |
+| `stat_checks` | List of `{"stat": "...", "dc": N}` for stat_check quests |
+
+### Map Screen
+
+The map is split into two quest sections:
+
+- **QUEST LIST** — available quests not yet taken, showing expiry countdown and hero requirements. Use `assign` to send heroes.
+- **ACTIVE QUESTS** — quests currently in progress, showing which heroes are on them and their current phase.
+
+Heroes show `IDLE` or `ON QUEST [TRAVELING / ON_QUEST]` so you can always tell who is available.
 
 ### Dice System
 
@@ -114,7 +162,7 @@ Every hero rolls a pool of dice each combat round:
 - **Normal dice**: d10 (1–10), the base die type for a rested hero.
 - **Locked dice**: d4 (1–4), replacing normal dice when the hero is exhausted.
 
-The `DiceAssignmentEngine` distributes the rolled values to the hero's skill slots according to four behavior profiles:
+The `DiceAssignmentEngine` distributes the rolled values to skill slots according to four behavior profiles:
 
 | Profile | Strategy |
 |---------|----------|
@@ -125,7 +173,7 @@ The `DiceAssignmentEngine` distributes the rolled values to the hero's skill slo
 
 ### Exhaustion System
 
-Exhaustion is a floating-point value (0–100+) that maps to five severity levels:
+Exhaustion is a floating-point value (0–100+) mapping to five severity levels:
 
 | Level | Range | Locked Dice | Stat Penalty |
 |-------|-------|-------------|--------------|
@@ -135,37 +183,38 @@ Exhaustion is a floating-point value (0–100+) that maps to five severity level
 | 4 (Drained) | 60–99 | 3 | all stats −2 |
 | 5 (Critical) | 100+ | 4 | all stats −2 + death roll |
 
-At level 5, after each combat the hero rolls against their exhaustion score (1d1000 < exhaustion) to determine whether they suffer a permanent stat loss. Heroes only recover exhaustion when IDLE.
+Heroes only recover exhaustion when IDLE. At level 5, heroes may suffer permanent stat loss after combat.
 
-### Behavior Profiles
+### Starting Roster
 
-Each hero has a `behavior_profile` that governs how their combat dice are distributed across skill slots. Profiles are designed to support specialization (focus), versatility (balanced), power concentration (greedy), or sacrifice strategies (dump).
+Every run begins with four heroes, one of each archetype:
+
+| Name | Archetype | HP | Key Stats |
+|------|-----------|-----|-----------|
+| Ragnar | Barbarian | 35 | STR 14, CON 15 |
+| Seraphine | Cleric | 28 | INT 12, CON 14 |
+| Aldric | Mage | 20 | INT 16 |
+| Vex | Rogue | 25 | DEX 16 |
 
 ### Hero Archetypes
 
-Heroes are loaded from JSON files in `data/archetypes/`. Each archetype defines base stats, dice configuration, starting skills, and passives.
-
-| Archetype | HP | Dice | Key Stats | Skills | Passive |
-|-----------|-----|------|-----------|--------|---------|
-| Barbarian | 35 | 4d10 | STR 14, CON 15 | Bash, Blood Cleave, Bloodletting | Ironhide (locked dice d6) |
-| Cleric | 28 | 4d10 | INT 12, CON 14 | Smite, Cleanse, Heal | Mender |
-| Rogue | 25 | 4d10 | DEX 16 | Poisoned Dagger, Knockout, Eviscerate | Lucky Roll |
-| Mage | 20 | 4d10 | INT 16 | Arcane Bolt, Fireball, Barrier | Prepared |
+| Archetype | HP | Dice | Skills | Passive |
+|-----------|-----|------|--------|---------|
+| Barbarian | 35 | 4d10 | Bash, Blood Cleave, Bloodletting | Ironhide (locked dice d6) |
+| Cleric | 28 | 4d10 | Smite, Cleanse, Heal | Mender |
+| Rogue | 25 | 4d10 | Poisoned Dagger, Knockout, Eviscerate | Lucky Roll |
+| Mage | 20 | 4d10 | Arcane Bolt, Fireball, Barrier | Prepared |
 
 ### Enemy Types
 
-Enemies are loaded from JSON files in `data/enemies/`. Each uses the slot-accumulation turn system where dice fill skill slots across turns.
-
 | Enemy | HP | Dice | Skills |
 |-------|-----|------|--------|
-| Goblin | 20 | 3d4 | Scratch (1 slot) |
+| Goblin | 20 | 3d4 | Stab Stab Stab (1 slot), Annoying (2 slots) |
 | Bandit | 35 | 4d6 | Stab (1), Dodge (1), Poison Mist (3) |
 | Bandit Captain | 55 | 5d6 | Plunder (2), Backstep (1), Poison Mist (3) |
 | Ogre | 70 | 1d12 | Smash (5 slots, fires every 5 turns) |
 
 ### Status Effects
-
-The combat engine supports a full status effect system with stacking, duration, and mutual cancellation:
 
 **Debuffs**: Poison, Burn, Bleed, Paralyze, Vulnerable, Weak, Downgrade, Disadvantage
 **Buffs**: Upgrade, Advantage
@@ -173,24 +222,13 @@ The combat engine supports a full status effect system with stacking, duration, 
 
 ### Encounter Table
 
-Enemy compositions for quests are data-driven via `data/encounters.json`:
+Enemy compositions per quest difficulty are defined in `data/encounters.json`:
 
-| Difficulty | Possible Encounters |
-|------------|-------------------|
-| Easy | 2 Goblins, or 1 Bandit |
-| Hard | 1 Bandit + 1 Bandit Captain |
-| Elite | 2 Goblins + 1 Ogre |
-
-### Quest Executor
-
-The `QuestExecutor` subscribes to `player.assign_quest` events and orchestrates the full quest lifecycle:
-
-1. Looks up the quest and heroes from MapState and RosterManager
-2. Validates and commits the assignment via HeroAssignment
-3. Spawns enemies from the encounter table for combat quests
-4. Runs the QuestPipeline (travel -> resolution -> rewards)
-5. Credits gold to the GoldLedger on victory
-6. Heals heroes (configurable percentage) and resets them to IDLE
+| Act | Difficulty | Possible Encounters |
+|-----|------------|-------------------|
+| 1 | Easy | 2 Goblins, or 1 Bandit, or 2–3 Goblins (Goblin Attack) |
+| 1 | Hard | 1 Bandit + 1 Bandit Captain |
+| 1 | Elite | 2 Goblins + 1 Ogre |
 
 ---
 
@@ -200,16 +238,12 @@ Baron Midas is the Act 1 boss. His HP scales with gold stolen during the act (ba
 
 ### Phase System
 
-Phase transitions are triggered by Skill 3's accumulation counter reaching its cost. Overflow dice from Skills 1 and 2 feed into Skill 3's progress, and the Steal skill's effectiveness also reduces its remaining cost. Permanent buffs stack across phases.
-
-| Phase | Dice | Skill 1 | Skill 2 | Skill 3 (Cost) | Permanent Buff Gained |
-|-------|------|---------|---------|----------------|----------------------|
-| 1 | 4d4 | Steal (1 slot, single) | Gilded Shield (1 slot, block) | I NEED GOLD (15) | +1 die |
-| 2 | 5d4 | Steal (2 slots, single) | Gilded Shield (1 slot, block + 1 Paralyze all) | I NEED MORE GOLD (20) | All dice -> d8 |
-| 3 | 5d8 | Steal (2 slots, single) | Gilded Shield (1 slot, block + 1 Paralyze all) | I NEED EVEN MORE GOLD (40) | Permanent Advantage |
-| 4 | 5d8 + Advantage | Golden Wave (2 slots, 2 random heroes) | Gilded Armor (1 slot, block + 2 Paralyze all) | Golden Explosion (50, 30 flat AOE) | -- |
-
-**Final form**: 5d8 with permanent Advantage, dealing heavy AOE damage.
+| Phase | Dice | Skill 1 | Skill 2 | Skill 3 (Cost) | Permanent Buff |
+|-------|------|---------|---------|----------------|----------------|
+| 1 | 4d4 | Steal (1 slot) | Gilded Shield (1 slot) | I NEED GOLD (15) | +1 die |
+| 2 | 5d4 | Steal (2 slots) | Gilded Shield (1 slot, Paralyze) | I NEED MORE GOLD (20) | All dice → d8 |
+| 3 | 5d8 | Steal (2 slots) | Gilded Shield (1 slot, Paralyze) | I NEED EVEN MORE GOLD (40) | Permanent Advantage |
+| 4 | 5d8 + Advantage | Golden Wave (2 slots, 2 random heroes) | Gilded Armor (1 slot, 2 Paralyze all) | Golden Explosion (50, 30 AOE) | — |
 
 ---
 
@@ -218,22 +252,45 @@ Phase transitions are triggered by Skill 3's accumulation counter reaching its c
 ### Requirements
 
 - Python 3.10 or later
-- No external dependencies -- the standard library is sufficient
+- No external dependencies — standard library only
 
-### Run all tests
-
-From the project root:
+### Interactive Mode
 
 ```bash
-python -m pytest -v
+python main.py
+```
+
+**Commands:**
+
+| Command | Description |
+|---------|-------------|
+| `assign <quest_id> <hero_name> [hero_name ...]` | Send named heroes on a quest |
+| `shop <shop_id>` | Open a travelling merchant shop |
+| `hire <hero_id>` | Hire a hero from the current shop |
+| `buy <item_id>` | Buy an item from the current shop |
+| `train <skill_id> <hero_id> <slot>` | Train a skill into a hero's slot (0–2) |
+| `heroes` | Switch to the hero panel view |
+| `items` | Switch to the items view |
+| `leave` | Leave the current shop |
+| `pause` | Toggle time pause |
+| `quit` | Exit the game |
+
+**Example session:**
+
+```
+> assign q_60 Ragnar
+OK: assign
+
+> assign q_120 Seraphine Aldric
+OK: assign
 ```
 
 ### Act Simulator
 
-The standalone simulator runs a full Act 1 with automated hero assignment, quest execution, and a boss fight:
+Runs a full Act 1 automatically with no user input:
 
 ```bash
-# Default run (4 heroes, seed 42, full heal, 100 gold stolen by boss)
+# Default run (4 heroes, seed 42, full heal)
 python simulate.py
 
 # Hard mode: 2 heroes, max boss HP, 50% heal
@@ -243,27 +300,23 @@ python simulate.py --party barbarian,rogue --gold-stolen 566 --heal 0.5
 python simulate.py --verbose --seed 99
 ```
 
-**Simulator options:**
-
 | Flag | Default | Description |
 |------|---------|-------------|
 | `--seed N` | 42 | RNG seed for reproducible runs |
 | `--gold N` | 500 | Starting guild gold |
 | `--gold-stolen N` | 100 | Gold stolen by Baron Midas (bonus HP, cap 566) |
-| `--heal 0.0-1.0` | 1.0 | Heal percentage after each quest (1.0 = full heal) |
-| `--party a,b,c` | barbarian,cleric,rogue,mage | Comma-separated archetype names |
+| `--heal 0.0–1.0` | 1.0 | Heal percentage after each quest |
+| `--party a,b,...` | barbarian,cleric,rogue,mage | Comma-separated archetype names |
 | `--verbose` | off | Show round-by-round combat detail |
 | `--ticks N` | 800 | Maximum simulation ticks |
 
-### Interactive mode
+### Run All Tests
 
 ```bash
-python main.py
+python -m pytest -v
 ```
 
-Commands: `assign <quest_id> <hero_ids>`, `shop <id>`, `hire <id>`, `buy <id>`, `train <skill> <hero> <slot>`, `heroes`, `items`, `leave`, `pause`, `quit`
-
-### Headless mode
+### Headless Mode
 
 ```python
 from ui.game_loop import GameLoop
@@ -275,7 +328,7 @@ for _ in range(200):
 
 print(loop.last_output)
 
-# Send a player command (quest assignment is now fully wired)
-feedback = loop.handle_input("assign q_60 hero_0 hero_1")
+# Assign by hero name
+feedback = loop.handle_input("assign q_60 Ragnar")
 print(feedback)
 ```

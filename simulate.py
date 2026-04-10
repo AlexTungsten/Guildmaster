@@ -18,6 +18,10 @@ import random
 import sys
 from typing import List
 
+# Ensure Unicode characters print correctly on Windows terminals
+if sys.stdout.encoding and sys.stdout.encoding.lower() != "utf-8":
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+
 from ui.game_loop import GameLoop
 from hero.hero_entity import HeroEntity, HeroStatus
 from hero.archetype_loader import load_archetype, list_archetypes
@@ -213,6 +217,8 @@ def main():
                 continue
             if quest.status.value != "available" or not idle:
                 continue
+            if len(idle) < quest.required_heroes:
+                continue  # Not enough idle heroes to meet minimum requirement
 
             send_count = min(quest.max_heroes, len(idle))
             sent = idle[:send_count]
