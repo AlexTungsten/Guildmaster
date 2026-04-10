@@ -2,7 +2,9 @@
   "act_1": {
     "easy": [
       {"enemies": ["goblin", "goblin"]},
-      {"enemies": ["bandit"]}
+      {"enemies": ["bandit"]},
+      {"quest_id": "a1_e4", "enemies": ["goblin", "goblin"]},
+      {"quest_id": "a1_e4", "enemies": ["goblin", "goblin", "goblin"]}
     ],
     "hard": [
       {"enemies": ["bandit", "bandit_captain"]}

@@ -1,8 +1,10 @@
 """
 map_renderer.py — Pure text renderers for the overworld map screen.
 
-render_map_screen() produces the main game HUD: active quests, open shops,
-boss status, hero statuses, and the command reference.
+render_map_screen() produces the main game HUD split into:
+  - QUEST LIST: available quests not yet taken (can be assigned)
+  - ACTIVE QUESTS: quests heroes are currently on
+  - Hero status section showing idle vs on-quest heroes clearly
 
 render_boss_timer_bar() renders a progress bar showing how much of the boss
 countdown has elapsed, useful as a compact inset within the map screen.
@@ -26,18 +28,9 @@ def render_map_screen(
     """
     Render the full overworld map as a multi-line text string.
 
-    Parameters
-    ----------
-    active_quests        : List of quest dicts; each should have "quest_id",
-                           "title", "difficulty", "expiry", "status", and
-                           "assigned_hero_ids".
-    active_shops         : List of shop dicts with "shop_id" and "expiry".
-    boss                 : Optional boss dict with "boss_id", "act", "revealed",
-                           "defeated", and "buffs"; None if no boss this act.
-    current_tick         : The current simulation tick for the header display.
-    act                  : Current act number (1–3).
-    boss_ticks_remaining : How many ticks until the boss is revealed.
-    hero_statuses        : List of hero dicts for the HEROES section.
+    Quests are split into two sections:
+      QUEST LIST    — status == "available", heroes not yet assigned
+      ACTIVE QUESTS — status is traveling / resolving / in_combat
     """
     lines = []
     lines.append(
@@ -45,19 +38,38 @@ def render_map_screen(
     )
     lines.append("")
 
-    lines.append(f"ACTIVE QUESTS ({len(active_quests)}):")
-    for quest in active_quests:
-        quest_id = quest.get("quest_id", "?")
-        title = quest.get("title", "Untitled")
-        difficulty = quest.get("difficulty", "?")
-        # expiry may be pre-computed ticks remaining or the raw expiration_tick
-        expiry = quest.get("expiry", quest.get("expiration_tick", "?"))
-        status = quest.get("status", "unknown")
-        assigned = quest.get("assigned_hero_ids", [])
-        lines.append(
-            f"  [{quest_id}] {title} | {difficulty} | Expires in: {expiry} ticks"
-            f" | Status: {status} | Heroes: {assigned}"
-        )
+    # Split quests into available (list) vs in-progress (active)
+    available_quests = [q for q in active_quests if q.get("status") == "available"]
+    in_progress_quests = [q for q in active_quests if q.get("status") != "available"]
+
+    lines.append(f"QUEST LIST ({len(available_quests)}):")
+    if available_quests:
+        for quest in available_quests:
+            quest_id = quest.get("quest_id", "?")
+            title = quest.get("title", "Untitled")
+            difficulty = quest.get("difficulty", "?")
+            expiry = quest.get("expiry", quest.get("expiration_tick", "?"))
+            req = quest.get("required_heroes", 1)
+            lines.append(
+                f"  [{quest_id}] {title} | {difficulty} | Expires in: {expiry} ticks | Need: {req} hero(es)"
+            )
+    else:
+        lines.append("  No quests available")
+    lines.append("")
+
+    lines.append(f"ACTIVE QUESTS ({len(in_progress_quests)}):")
+    if in_progress_quests:
+        for quest in in_progress_quests:
+            quest_id = quest.get("quest_id", "?")
+            title = quest.get("title", "Untitled")
+            difficulty = quest.get("difficulty", "?")
+            status = quest.get("status", "unknown")
+            assigned = quest.get("assigned_hero_ids", [])
+            lines.append(
+                f"  [{quest_id}] {title} | {difficulty} | {status.upper()} | Heroes: {assigned}"
+            )
+    else:
+        lines.append("  No quests in progress")
     lines.append("")
 
     lines.append(f"SHOPS ({len(active_shops)}):")
@@ -69,7 +81,6 @@ def render_map_screen(
 
     lines.append("BOSS:")
     if boss is not None and boss.get("revealed", False):
-        # Boss is on the map — show its identity and accumulated buffs
         boss_id = boss.get("boss_id", "?")
         boss_act = boss.get("act", act)
         buffs = boss.get("buffs", [])
@@ -83,7 +94,11 @@ def render_map_screen(
         name = hero.get("name", "Unknown")
         status = hero.get("status", "unknown")
         exhaustion = hero.get("exhaustion", 0.0)
-        lines.append(f"  {name} | {status} | Exhaustion: {exhaustion:.0f}")
+        if status == "idle":
+            status_str = "IDLE"
+        else:
+            status_str = f"ON QUEST [{status.upper()}]"
+        lines.append(f"  {name} | {status_str} | Exhaustion: {exhaustion:.0f}")
     lines.append("")
 
     lines.append(
@@ -101,19 +116,12 @@ def render_boss_timer_bar(
 
     The bar fills from left to right as ticks elapse.
     '#' characters = elapsed time; '.' characters = remaining time.
-
-    Parameters
-    ----------
-    ticks_remaining : Ticks left until the boss appears.
-    total_ticks     : Full duration of the boss countdown for this act.
-    width           : Character width of the bar (default 40).
     """
     if total_ticks <= 0:
-        filled = width   # Degenerate case: treat as fully elapsed
+        filled = width
     else:
-        # filled = proportion elapsed × width
         filled = int(width * (total_ticks - ticks_remaining) / total_ticks)
-    filled = max(0, min(width, filled))   # Clamp to [0, width]
+    filled = max(0, min(width, filled))
     empty = width - filled
     bar = "#" * filled + "." * empty
     return f"[{bar}] {ticks_remaining}/{total_ticks} ticks"

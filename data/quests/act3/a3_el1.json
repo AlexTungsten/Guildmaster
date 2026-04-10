@@ -1,0 +1,14 @@
+{
+  "quest_id": "a3_el1",
+  "title": "Arch-Demon",
+  "description": "The arch-demon commanding the invasion has revealed itself.",
+  "quest_type": "combat",
+  "difficulty": "elite",
+  "required_heroes": 3,
+  "max_heroes": 3,
+  "travel_time": 60,
+  "resolution_time": 120,
+  "expiration_time": 50,
+  "base_exhaustion": 50.0,
+  "reward": {"gold": 350, "xp": 500}
+}

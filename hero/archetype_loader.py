@@ -29,7 +29,7 @@ def load_archetype(archetype_id: str, hero_id: str, name: str) -> HeroEntity:
     if not os.path.exists(path):
         raise FileNotFoundError(f"Archetype file not found: {path}")
 
-    with open(path, "r") as f:
+    with open(path, "r", encoding="utf-8") as f:
         data = json.load(f)
 
     stats = data.get("stats", {})

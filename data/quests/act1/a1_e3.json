@@ -1,0 +1,14 @@
+{
+  "quest_id": "a1_e3",
+  "title": "Rat Infestation",
+  "description": "The cellar beneath the inn is crawling with giant rats.",
+  "quest_type": "combat",
+  "difficulty": "easy",
+  "required_heroes": 1,
+  "max_heroes": 3,
+  "travel_time": 10,
+  "resolution_time": 30,
+  "expiration_time": 50,
+  "base_exhaustion": 5.0,
+  "reward": {"gold": 10, "xp": 20}
+}

@@ -1,0 +1,14 @@
+{
+  "quest_id": "a1_e4",
+  "title": "Goblin Attack",
+  "description": "example goblin reminder to update",
+  "quest_type": "combat",
+  "difficulty": "easy",
+  "required_heroes": 1,
+  "max_heroes": 2,
+  "travel_time": 20,
+  "resolution_time": 40,
+  "expiration_time": 50,
+  "base_exhaustion": 8.0,
+  "reward": {"gold": 18, "xp": 27}
+}

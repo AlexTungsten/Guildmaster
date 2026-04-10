@@ -1,0 +1,14 @@
+{
+  "quest_id": "a1_h1",
+  "title": "Bandit Leader",
+  "description": "A notorious bandit leader has taken control of a village.",
+  "quest_type": "combat",
+  "difficulty": "hard",
+  "required_heroes": 2,
+  "max_heroes": 3,
+  "travel_time": 30,
+  "resolution_time": 60,
+  "expiration_time": 50,
+  "base_exhaustion": 15.0,
+  "reward": {"gold": 50, "xp": 75}
+}

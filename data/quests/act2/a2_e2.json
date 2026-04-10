@@ -1,0 +1,15 @@
+{
+  "quest_id": "a2_e2",
+  "title": "Cursed Artifact",
+  "description": "A strange artifact is causing the townsfolk to act strangely.",
+  "quest_type": "stat_check",
+  "difficulty": "easy",
+  "required_heroes": 1,
+  "max_heroes": 3,
+  "travel_time": 20,
+  "resolution_time": 35,
+  "expiration_time": 50,
+  "base_exhaustion": 10.0,
+  "reward": {"gold": 30, "xp": 45},
+  "stat_checks": [{"stat": "intelligence", "dc": 12}]
+}

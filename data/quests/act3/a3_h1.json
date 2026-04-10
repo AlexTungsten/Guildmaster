@@ -1,0 +1,14 @@
+{
+  "quest_id": "a3_h1",
+  "title": "Demon General",
+  "description": "A demon general commands the invading forces at the city gates.",
+  "quest_type": "combat",
+  "difficulty": "hard",
+  "required_heroes": 2,
+  "max_heroes": 3,
+  "travel_time": 40,
+  "resolution_time": 80,
+  "expiration_time": 50,
+  "base_exhaustion": 28.0,
+  "reward": {"gold": 130, "xp": 190}
+}

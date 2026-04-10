@@ -60,6 +60,14 @@ class RosterManager:
         """Look up a hero by ID without removing it."""
         return self._heroes.get(hero_id)
 
+    def get_hero_by_name(self, name: str) -> Optional[HeroEntity]:
+        """Look up a hero by name (case-insensitive); returns None if not found."""
+        name_lower = name.lower()
+        for hero in self._heroes.values():
+            if hero.name.lower() == name_lower:
+                return hero
+        return None
+
     def idle_heroes(self) -> List[HeroEntity]:
         """Return only heroes whose status is IDLE (available to be assigned quests)."""
         return [h for h in self._heroes.values() if h.status == HeroStatus.IDLE]

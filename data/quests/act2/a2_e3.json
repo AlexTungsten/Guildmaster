@@ -1,0 +1,14 @@
+{
+  "quest_id": "a2_e3",
+  "title": "Undead Patrol",
+  "description": "Undead creatures have been spotted patrolling the graveyard.",
+  "quest_type": "combat",
+  "difficulty": "easy",
+  "required_heroes": 1,
+  "max_heroes": 3,
+  "travel_time": 20,
+  "resolution_time": 40,
+  "expiration_time": 50,
+  "base_exhaustion": 11.0,
+  "reward": {"gold": 32, "xp": 48}
+}

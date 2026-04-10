@@ -1,0 +1,18 @@
+{
+  "quest_id": "a1_h2",
+  "title": "Ancient Riddle",
+  "description": "A sealed vault requires solving an ancient puzzle.",
+  "quest_type": "stat_check",
+  "difficulty": "hard",
+  "required_heroes": 1,
+  "max_heroes": 3,
+  "travel_time": 25,
+  "resolution_time": 50,
+  "expiration_time": 50,
+  "base_exhaustion": 12.0,
+  "reward": {"gold": 40, "xp": 60},
+  "stat_checks": [
+    {"stat": "intelligence", "dc": 14},
+    {"stat": "dexterity", "dc": 12}
+  ]
+}

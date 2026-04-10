@@ -1,0 +1,14 @@
+{
+  "quest_id": "a3_e1",
+  "title": "Demonic Scouts",
+  "description": "Demonic scouts are probing the city's defenses.",
+  "quest_type": "combat",
+  "difficulty": "easy",
+  "required_heroes": 1,
+  "max_heroes": 3,
+  "travel_time": 30,
+  "resolution_time": 50,
+  "expiration_time": 50,
+  "base_exhaustion": 16.0,
+  "reward": {"gold": 55, "xp": 80}
+}

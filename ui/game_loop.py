@@ -28,6 +28,7 @@ from ui.renderers.map_renderer import render_map_screen, render_boss_timer_bar
 from ui.renderers.hero_renderer import render_hero_panel
 from quest.quest_executor import QuestExecutor
 from combat.combat_engine import CombatEngine
+from hero.archetype_loader import load_archetype
 
 
 class GameLoop:
@@ -181,6 +182,7 @@ class GameLoop:
         combat_engine = CombatEngine(event_bus)
         quest_executor = QuestExecutor(
             event_bus=event_bus,
+            time_engine=time_engine,
             map_state=overworld.map_state,
             roster=economy.roster,
             ledger=economy.ledger,
@@ -196,6 +198,17 @@ class GameLoop:
             dispatcher=dispatcher,
         )
         loop._quest_executor = quest_executor
+
+        # Add one hero of each archetype as the starting roster
+        starting_heroes = [
+            ("hero_start_1", "barbarian", "Ragnar"),
+            ("hero_start_2", "cleric",    "Seraphine"),
+            ("hero_start_3", "mage",      "Aldric"),
+            ("hero_start_4", "rogue",     "Vex"),
+        ]
+        for hero_id, archetype, name in starting_heroes:
+            hero = load_archetype(archetype, hero_id, name)
+            economy.roster.add_hero(hero)
 
         # Wire event subscriptions for screen transitions (these capture `loop` via closure)
         def _on_view_heroes(data):

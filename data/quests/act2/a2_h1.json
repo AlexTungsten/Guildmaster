@@ -1,0 +1,14 @@
+{
+  "quest_id": "a2_h1",
+  "title": "Necromancer's Lair",
+  "description": "A necromancer is raising an army of undead from the old catacombs.",
+  "quest_type": "combat",
+  "difficulty": "hard",
+  "required_heroes": 2,
+  "max_heroes": 3,
+  "travel_time": 35,
+  "resolution_time": 70,
+  "expiration_time": 50,
+  "base_exhaustion": 20.0,
+  "reward": {"gold": 80, "xp": 120}
+}

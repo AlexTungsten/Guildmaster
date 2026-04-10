@@ -1,0 +1,15 @@
+{
+  "quest_id": "a3_e2",
+  "title": "Infernal Ritual",
+  "description": "A demonic ritual must be disrupted before it completes.",
+  "quest_type": "stat_check",
+  "difficulty": "easy",
+  "required_heroes": 1,
+  "max_heroes": 3,
+  "travel_time": 25,
+  "resolution_time": 40,
+  "expiration_time": 50,
+  "base_exhaustion": 14.0,
+  "reward": {"gold": 50, "xp": 70},
+  "stat_checks": [{"stat": "intelligence", "dc": 14}]
+}

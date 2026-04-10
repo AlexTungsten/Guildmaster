@@ -1,0 +1,18 @@
+{
+  "quest_id": "a3_h2",
+  "title": "Planar Breach",
+  "description": "A rift between worlds must be sealed before more demons pour through.",
+  "quest_type": "stat_check",
+  "difficulty": "hard",
+  "required_heroes": 1,
+  "max_heroes": 3,
+  "travel_time": 35,
+  "resolution_time": 65,
+  "expiration_time": 50,
+  "base_exhaustion": 25.0,
+  "reward": {"gold": 110, "xp": 165},
+  "stat_checks": [
+    {"stat": "intelligence", "dc": 17},
+    {"stat": "constitution", "dc": 15}
+  ]
+}

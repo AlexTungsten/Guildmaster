@@ -1,0 +1,14 @@
+{
+  "quest_id": "a3_e3",
+  "title": "Hellfire Patrol",
+  "description": "Imps and lesser demons patrol the outer district.",
+  "quest_type": "combat",
+  "difficulty": "easy",
+  "required_heroes": 1,
+  "max_heroes": 3,
+  "travel_time": 25,
+  "resolution_time": 45,
+  "expiration_time": 50,
+  "base_exhaustion": 15.0,
+  "reward": {"gold": 52, "xp": 75}
+}

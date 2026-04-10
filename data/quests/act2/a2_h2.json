@@ -1,0 +1,18 @@
+{
+  "quest_id": "a2_h2",
+  "title": "Corruption Investigation",
+  "description": "The local guard captain may be working for dark forces.",
+  "quest_type": "stat_check",
+  "difficulty": "hard",
+  "required_heroes": 1,
+  "max_heroes": 3,
+  "travel_time": 30,
+  "resolution_time": 55,
+  "expiration_time": 50,
+  "base_exhaustion": 18.0,
+  "reward": {"gold": 70, "xp": 100},
+  "stat_checks": [
+    {"stat": "charisma", "dc": 15},
+    {"stat": "intelligence", "dc": 13}
+  ]
+}

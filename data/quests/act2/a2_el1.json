@@ -1,0 +1,14 @@
+{
+  "quest_id": "a2_el1",
+  "title": "Vampire Lord",
+  "description": "An ancient vampire lord has awakened in the ruined castle.",
+  "quest_type": "combat",
+  "difficulty": "elite",
+  "required_heroes": 3,
+  "max_heroes": 3,
+  "travel_time": 50,
+  "resolution_time": 100,
+  "expiration_time": 50,
+  "base_exhaustion": 35.0,
+  "reward": {"gold": 200, "xp": 300}
+}

@@ -1,0 +1,14 @@
+{
+  "quest_id": "a1_el1",
+  "title": "Troll Bridge",
+  "description": "A massive troll has claimed the only bridge into town.",
+  "quest_type": "combat",
+  "difficulty": "elite",
+  "required_heroes": 3,
+  "max_heroes": 3,
+  "travel_time": 40,
+  "resolution_time": 80,
+  "expiration_time": 50,
+  "base_exhaustion": 25.0,
+  "reward": {"gold": 120, "xp": 180}
+}
