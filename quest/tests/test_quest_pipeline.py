@@ -4,7 +4,7 @@ from typing import List, Optional
 
 from hero.hero_entity import HeroEntity, Stat
 from hero.hero_entity import Skill
-from enemy.enemy import Enemy, AttackPattern
+from enemy.enemy import Enemy
 from combat.combat_engine import CombatResult, CombatRound
 from game_runtime.event_bus import EventBus
 from quest.quest_model import Quest, QuestType, QuestDifficulty, QuestStatus, Reward
@@ -40,7 +40,6 @@ def make_enemy() -> Enemy:
         current_health=10,
         skills=[skill],
         base_dice_count=2,
-        pattern=AttackPattern(skill_indices=[0]),
     )
 
 

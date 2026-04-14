@@ -55,11 +55,11 @@ class QuestExecutor:
     def __init__(
         self,
         event_bus: EventBus,
-        time_engine: TimeEngine,
         map_state: MapState,
         roster: RosterManager,
         ledger: GoldLedger,
         combat_engine: CombatEngine,
+        time_engine: Optional[TimeEngine] = None,
         heal_percent: float = 1.0,
     ):
         self._event_bus = event_bus
@@ -99,12 +99,12 @@ class QuestExecutor:
             return
 
         heroes: List[HeroEntity] = []
-        for name in hero_ids:
-            hero = self._roster.get_hero_by_name(name)
+        for hero_id in hero_ids:
+            hero = self._roster.get_hero(hero_id)
             if hero is None:
                 self._event_bus.publish("quest.error", {
                     "quest_id": quest_id,
-                    "reason": f"Hero '{name}' not found in roster",
+                    "reason": f"Hero '{hero_id}' not found in roster",
                 })
                 return
             heroes.append(hero)
@@ -132,10 +132,13 @@ class QuestExecutor:
             "distribution": None,
         }
 
-        # Schedule arrival after travel_time ticks
-        self._time_engine.schedule(
-            quest.travel_time, "quest.phase.arrive", {"quest_id": quest_id}
-        )
+        # Schedule arrival after travel_time ticks (or fire immediately if no TimeEngine)
+        if self._time_engine is not None:
+            self._time_engine.schedule(
+                quest.travel_time, "quest.phase.arrive", {"quest_id": quest_id}
+            )
+        else:
+            self._event_bus.publish("quest.phase.arrive", {"quest_id": quest_id})
         self._event_bus.publish("quest.started", {
             "quest_id": quest_id,
             "travel_time": quest.travel_time,
@@ -182,10 +185,13 @@ class QuestExecutor:
         state["victory"] = victory
         state["combat_result"] = combat_result
 
-        # Schedule end of resolution after resolution_time ticks
-        self._time_engine.schedule(
-            quest.resolution_time, "quest.phase.return", {"quest_id": quest_id}
-        )
+        # Schedule end of resolution after resolution_time ticks (or fire immediately)
+        if self._time_engine is not None:
+            self._time_engine.schedule(
+                quest.resolution_time, "quest.phase.return", {"quest_id": quest_id}
+            )
+        else:
+            self._event_bus.publish("quest.phase.return", {"quest_id": quest_id})
 
     # ------------------------------------------------------------------
     # Phase 2 — Resolution done; heroes begin the journey home
@@ -219,10 +225,13 @@ class QuestExecutor:
         for hero in heroes:
             hero.status = HeroStatus.TRAVELING
 
-        # Schedule heroes arriving home after another travel_time ticks
-        self._time_engine.schedule(
-            quest.travel_time, "quest.phase.heroes_back", {"quest_id": quest_id}
-        )
+        # Schedule heroes arriving home after another travel_time ticks (or fire immediately)
+        if self._time_engine is not None:
+            self._time_engine.schedule(
+                quest.travel_time, "quest.phase.heroes_back", {"quest_id": quest_id}
+            )
+        else:
+            self._event_bus.publish("quest.phase.heroes_back", {"quest_id": quest_id})
 
     # ------------------------------------------------------------------
     # Phase 3 — Heroes arrive home; finalize and reset

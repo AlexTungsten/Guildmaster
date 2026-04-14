@@ -56,6 +56,8 @@ class CombatRound:
     enemy_results: List[SkillResult]
     hero_damage_taken: int
     enemy_damage_dealt: int
+    hero_hp_after: dict = field(default_factory=dict)   # hero_id -> current_health
+    enemy_hp_after: List[int] = field(default_factory=list)  # positional (avoids duplicate enemy_id issues)
 
 
 @dataclass
@@ -512,6 +514,8 @@ class CombatEngine:
                 enemy_results=all_enemy_results,
                 hero_damage_taken=hero_damage_taken,
                 enemy_damage_dealt=enemy_damage_dealt,
+                hero_hp_after={h.hero_id: h.current_health for h in heroes},
+                enemy_hp_after=[e.current_health for e in enemies],
             ))
 
             if publish_events:

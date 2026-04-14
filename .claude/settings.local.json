@@ -2,7 +2,12 @@
   "permissions": {
     "allow": [
       "Bash(python -m pytest enemy/tests/test_enemy.py -v)",
-      "Bash(python -m unittest enemy.tests.test_enemy -v)"
+      "Bash(python -m unittest enemy.tests.test_enemy -v)",
+      "Bash(python -m combat.combat_sim --help)",
+      "Bash(python -m combat.combat_sim --heroes barbarian rogue --enemies goblin goblin --seed 42 --verbose)",
+      "Bash(python -m combat.combat_sim --heroes barbarian cleric mage --boss baron_midas --gold-stolen 200 --seed 7 --verbose)",
+      "Bash(python -m combat.combat_sim --heroes barbarian --enemies ogre --hero-hp 5 --seed 1)",
+      "Bash(python -m pytest --tb=short -q)"
     ]
   }
 }
