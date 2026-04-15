@@ -1,0 +1,35 @@
+{
+  "boss_id": "kobold_king",
+  "name": "Kobold King",
+  "archetype": "kobold_king",
+  "mech": {
+    "base_health": 150,
+    "base_dice_count": 3,
+    "base_dice_sides": 8,
+    "skills": [
+      {
+        "name": "Cannon Barrage",
+        "description": "Fires cannon blasts split evenly between all heroes.",
+        "associated_stat": "STR",
+        "dice_slots": 2,
+        "effect_type": "aoe",
+        "special": "cannon_barrage"
+      },
+      {
+        "name": "Oil Trap",
+        "description": "Douses all heroes in oil: 2 Weak, 1 Vulnerable, 1 Paralyze.",
+        "associated_stat": "INT",
+        "dice_slots": 2,
+        "effect_type": "aoe",
+        "special": "oil_trap"
+      },
+      {
+        "name": "Ramming Speed",
+        "description": "Full speed ahead — tramples all heroes.",
+        "associated_stat": "STR",
+        "dice_slots": 3,
+        "effect_type": "aoe"
+      }
+    ]
+  }
+}

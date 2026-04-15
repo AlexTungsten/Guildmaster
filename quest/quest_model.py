@@ -97,6 +97,13 @@ class Quest:
     spawned_at_tick: int = 0
     stat_checks: List[dict] = field(default_factory=list)
 
+    # --- Boss-specific critical quest fields ---
+    # If non-empty, QuestExecutor uses these enemy IDs instead of the encounter table.
+    enemy_composition: List[str] = field(default_factory=list)
+    # Which boss this critical quest feeds into; drives ActRunState write-back.
+    # Values: "baron_midas" | "cursed_knight" | "kobold_king" | None
+    boss_context: Optional[str] = None
+
     def to_dict(self) -> dict:
         return {
             "quest_id": self.quest_id,
@@ -126,6 +133,8 @@ class Quest:
             "assigned_hero_ids": list(self.assigned_hero_ids),
             "spawned_at_tick": self.spawned_at_tick,
             "stat_checks": list(self.stat_checks),
+            "enemy_composition": list(self.enemy_composition),
+            "boss_context": self.boss_context,
         }
 
     @classmethod
@@ -161,4 +170,6 @@ class Quest:
             assigned_hero_ids=data.get("assigned_hero_ids", []),
             spawned_at_tick=data.get("spawned_at_tick", 0),
             stat_checks=data.get("stat_checks", []),
+            enemy_composition=data.get("enemy_composition", []),
+            boss_context=data.get("boss_context"),
         )

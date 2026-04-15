@@ -1,0 +1,34 @@
+{
+  "enemy_id": "kobold",
+  "name": "Kobold",
+  "archetype": "kobold",
+  "tier": "common",
+  "max_health": 20,
+  "current_health": 20,
+  "strength": 10,
+  "dexterity": 10,
+  "intelligence": 10,
+  "charisma": 10,
+  "constitution": 10,
+  "base_dice_count": 2,
+  "base_dice_sides": 6,
+  "retaliate_damage": 3,
+  "skills": [
+    {
+      "name": "Shovel Bash",
+      "description": "Deal dice damage to a single hero. Apply 1 Paralyze.",
+      "associated_stat": "strength",
+      "dice_slots": 1,
+      "effect_type": "damage",
+      "special": "paralyze"
+    },
+    {
+      "name": "Trap",
+      "description": "Gain dice block. Retaliate: on first hit while block is active deal 3 damage to attacker and apply 1 Bleed. Consumed after one trigger.",
+      "associated_stat": "constitution",
+      "dice_slots": 1,
+      "effect_type": "defend",
+      "special": "trap"
+    }
+  ]
+}

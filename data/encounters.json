@@ -1,16 +1,22 @@
 {
   "act_1": {
     "easy": [
-      {"enemies": ["goblin", "goblin"]},
-      {"enemies": ["bandit"]},
-      {"quest_id": "a1_e4", "enemies": ["goblin", "goblin"]},
-      {"quest_id": "a1_e4", "enemies": ["goblin", "goblin", "goblin"]}
+      {"enemies": ["bandit", "bandit"]},
+      {"enemies": ["wolf", "wolf", "wolf"]},
+      {"enemies": ["kobold", "kobold"]}
     ],
     "hard": [
-      {"enemies": ["bandit", "bandit_captain"]}
+      {"enemies": ["bandit", "bandit_captain"]},
+      {"enemies": ["goblin", "goblin", "goblin", "goblin"]},
+      {"enemies": ["bandit", "bandit", "bandit"]},
+      {"enemies": ["ogre"]},
+      {"enemies": ["werewolf"]},
+      {"enemies": ["kobold", "kobold", "kobold_tinkerer"]}
     ],
     "elite": [
-      {"enemies": ["goblin", "goblin", "ogre"]}
+      {"enemies": ["goblin", "goblin", "ogre"]},
+      {"enemies": ["werewolf", "wolf"]},
+      {"enemies": ["bandit_leader"]}
     ]
   }
 }

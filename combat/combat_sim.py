@@ -25,8 +25,9 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 from game_runtime.event_bus import EventBus
 from hero.archetype_loader import load_archetype, list_archetypes
 from enemy.enemy_loader import load_enemy, list_enemies
-from enemy.boss_loader import load_boss, list_bosses
+from enemy.boss_loader import load_boss, load_kobold_king_encounter, list_bosses
 from enemy.boss_enemy import BossEnemy
+from enemy.special_enemies import KoboldKingEnemy, MechEnemy, CursedKnightBossEnemy
 from combat.combat_engine import CombatEngine, CombatRound
 
 
@@ -71,7 +72,7 @@ def _phase_transition_in(cr: CombatRound) -> bool:
 def _print_round(
     cr: CombatRound,
     heroes: list,
-    enemies: list,
+    enemies_final: list,   # full enemy list including all spawns, in append order
     verbose: bool,
     phase_tracker: list,   # [current_phase] mutable so we can update it
 ) -> None:
@@ -88,18 +89,32 @@ def _print_round(
 
     print()
 
-    # Enemies / boss
-    for i, enemy in enumerate(enemies):
-        hp = cr.enemy_hp_after[i] if i < len(cr.enemy_hp_after) else enemy.current_health
+    # Enemies visible this round = enemies_final[:len(enemy_hp_after)]
+    # because enemies are only ever appended, the first N entries always correspond
+    # to the N entries captured in enemy_hp_after for this round.
+    round_enemies = enemies_final[: len(cr.enemy_hp_after)]
+    for i, enemy in enumerate(round_enemies):
+        hp = cr.enemy_hp_after[i]
         bar = _hp_bar(max(0, hp), enemy.max_health)
         dead = "  [DEAD]" if hp <= 0 else ""
+        spawn_tag = "  [spawn]" if enemy.owner_ref is not None else ""
 
-        if isinstance(enemy, BossEnemy):
-            # Show phase as it was at START of this round (before any transition)
+        if isinstance(enemy, MechEnemy) and enemy.hidden:
+            # Show hidden Mech with buffed stats so we can watch it grow
+            print(f"  {enemy.name:<18} {bar}  [HIDDEN] (3d{enemy.base_dice_sides} {enemy.base_dice_count} dice)")
+        elif isinstance(enemy, KoboldKingEnemy):
+            tag = "  [UNTARGETABLE]" if hp > 0 else dead
+            print(f"  {enemy.name:<18} {bar}{tag}")
+        elif isinstance(enemy, CursedKnightBossEnemy):
+            # transformed is sticky so showing it from final state is always accurate;
+            # bloodlust is not tracked per-round so we omit it here (shown in summary)
+            form = "  [WEREWOLF FORM]" if enemy.transformed else ""
+            print(f"  {enemy.name:<18} {bar}{dead}{form}")
+        elif isinstance(enemy, BossEnemy):
             phase_info = f"  [Phase {phase_tracker[0]}]"
             print(f"  {enemy.name:<18} {bar}{dead}{phase_info}")
         else:
-            print(f"  {enemy.name:<18} {bar}{dead}")
+            print(f"  {enemy.name:<18} {bar}{dead}{spawn_tag}")
 
     # Boss phase transition happened this round?
     if _phase_transition_in(cr):
@@ -208,14 +223,24 @@ def main() -> None:
 
     # ── Load opponents ──────────────────────────────────────────────────────
     boss_obj = None
+    kobold_king_encounter = False
     if args.boss:
         try:
-            boss_obj = load_boss(args.boss, gold_stolen=args.gold_stolen)
+            if args.boss == "kobold_king":
+                enemies = load_kobold_king_encounter(args.critical_quests)
+                boss_obj = None
+                kobold_king_encounter = True
+            else:
+                boss_obj = load_boss(
+                    args.boss,
+                    gold_stolen=args.gold_stolen,
+                    damage_dealt=args.bloodlust,  # --bloodlust doubles as damage_dealt for cursed_knight
+                )
+                enemies = [boss_obj]
         except FileNotFoundError:
             print(f"Error: boss '{args.boss}' not found.")
             print(f"Available: {', '.join(sorted(boss_ids))}")
             sys.exit(1)
-        enemies = [boss_obj]
     else:
         chosen_ids = args.enemies or ["goblin"]
         enemies = []
@@ -242,8 +267,16 @@ def main() -> None:
     print()
     print("  Enemies:")
     for e in enemies:
-        phase_str = f"  [Phase {e.current_phase}]" if isinstance(e, BossEnemy) else ""
-        print(f"    {e.name:<16} ({e.archetype})  HP {e.current_health}/{e.max_health}{phase_str}")
+        if isinstance(e, KoboldKingEnemy):
+            cq = args.critical_quests
+            print(f"    {e.name:<16} ({e.archetype})  [UNTARGETABLE]  CQ={cq}")
+        elif isinstance(e, MechEnemy):
+            print(f"    {e.name:<16} ({e.archetype})  HP {e.current_health}/{e.max_health}  [HIDDEN]")
+        elif isinstance(e, BossEnemy):
+            phase_str = f"  [Phase {e.current_phase}]"
+            print(f"    {e.name:<16} ({e.archetype})  HP {e.current_health}/{e.max_health}{phase_str}")
+        else:
+            print(f"    {e.name:<16} ({e.archetype})  HP {e.current_health}/{e.max_health}")
 
     if boss_obj and args.gold_stolen:
         bonus = boss_obj.gold_stolen  # already capped by loader
@@ -273,13 +306,15 @@ def main() -> None:
     )
 
     # ── Display rounds ──────────────────────────────────────────────────────
-    phase_tracker = [boss_obj.current_phase if boss_obj else 0]
-    # Reset phase_tracker to 1 for boss fights (we track transitions forward)
-    if boss_obj:
-        phase_tracker[0] = 1
+    if isinstance(boss_obj, BossEnemy):
+        phase_tracker = [1]
+    else:
+        phase_tracker = [0]
+
+    enemies_final = result.enemies_final  # includes all spawned entities
 
     for cr in result.rounds:
-        _print_round(cr, heroes, enemies, args.verbose, phase_tracker)
+        _print_round(cr, heroes, enemies_final, args.verbose, phase_tracker)
 
     # ── Summary ─────────────────────────────────────────────────────────────
     print(f"\n{'=' * 52}")
@@ -301,12 +336,43 @@ def main() -> None:
         status = "ALIVE" if hp > 0 else "DEAD"
         print(f"    {hero.name:<16} {hp}/{hero.max_health} HP  [{status}]")
 
-    if boss_obj and result.rounds:
+    if kobold_king_encounter and result.rounds:
+        mech = next((e for e in enemies_final if isinstance(e, MechEnemy)), None)
+        if mech:
+            mech_idx = enemies_final.index(mech)
+            last_hp = next(
+                (cr.enemy_hp_after[mech_idx] for cr in reversed(result.rounds)
+                 if mech_idx < len(cr.enemy_hp_after)),
+                mech.current_health,
+            )
+            print()
+            print(f"  The Mech: {max(0, last_hp)}/{mech.max_health} HP"
+                  f"  [{mech.base_dice_count}d{mech.base_dice_sides}]")
+    elif boss_obj and result.rounds:
         final_hp = result.rounds[-1].enemy_hp_after[0] if result.rounds[-1].enemy_hp_after else boss_obj.current_health
         print()
         print(f"  {boss_obj.name}:")
         print(f"    HP remaining: {max(0, final_hp)}/{boss_obj.max_health}")
-        print(f"    Final phase:  {phase_tracker[0]}")
+        if isinstance(boss_obj, BossEnemy):
+            print(f"    Final phase:  {phase_tracker[0]}")
+        elif isinstance(boss_obj, CursedKnightBossEnemy):
+            form = "Werewolf" if boss_obj.transformed else "Knight"
+            print(f"    Form:         {form}  (Bloodlust {boss_obj.bloodlust_current})")
+
+    # Show any spawned entities in the final summary
+    spawned = [e for e in enemies_final if e.owner_ref is not None]
+    if spawned:
+        print()
+        print("  Spawned entities:")
+        for e in spawned:
+            last_hp = next(
+                (cr.enemy_hp_after[enemies_final.index(e)]
+                 for cr in reversed(result.rounds)
+                 if enemies_final.index(e) < len(cr.enemy_hp_after)),
+                e.current_health,
+            )
+            status = "ALIVE" if last_hp > 0 else "DEAD"
+            print(f"    {e.name:<16} (owned by {e.owner_ref.name})  [{status}]")
 
     print()
 

@@ -18,6 +18,7 @@ from dataclasses import dataclass, field
 from typing import Dict, List, Optional
 
 from quest.quest_model import Quest, QuestStatus
+from game_runtime.act_run_state import ActRunState
 
 
 @dataclass
@@ -55,6 +56,7 @@ class MapState:
     current_act: int = 1
     act_start_tick: int = 0
     boss_timer_duration: int = 600   # Ticks from act_start until the boss is revealed
+    act_run_state: Optional[ActRunState] = None  # Boss-specific progression state
 
     def add_quest(self, quest: Quest) -> None:
         """Register a newly spawned quest on the map."""
@@ -111,6 +113,7 @@ class MapState:
             "current_act": self.current_act,
             "act_start_tick": self.act_start_tick,
             "boss_timer_duration": self.boss_timer_duration,
+            "act_run_state": self.act_run_state.to_dict() if self.act_run_state else None,
         }
 
     @classmethod
@@ -139,6 +142,9 @@ class MapState:
                 defeated=b.get("defeated", False),
                 buffs=b.get("buffs", []),
             )
+        act_run_state = None
+        if data.get("act_run_state") is not None:
+            act_run_state = ActRunState.from_dict(data["act_run_state"])
         return cls(
             active_quests=active_quests,
             active_shops=active_shops,
@@ -146,4 +152,5 @@ class MapState:
             current_act=data.get("current_act", 1),
             act_start_tick=data.get("act_start_tick", 0),
             boss_timer_duration=data.get("boss_timer_duration", 600),
+            act_run_state=act_run_state,
         )

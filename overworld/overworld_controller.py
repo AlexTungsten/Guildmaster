@@ -16,12 +16,15 @@ The class method create() is the recommended factory for wiring up a complete
 overworld from scratch with sensible defaults.
 """
 
+import random
+
 from overworld.map_state import MapState, BossSlot
 from overworld.expiration_tracker import ExpirationTracker
 from overworld.quest_spawner import QuestSpawner
 from overworld.shop_spawner import ShopSpawner
 from overworld.boss_timer import BossTimer
-from quest.critical_injector import CriticalInjector, build_default_injector
+from quest.critical_injector import CriticalInjector, build_default_injector, build_critical_injector
+from game_runtime.act_run_state import ActRunState, new_act_run_state
 from game_runtime.event_bus import EventBus
 
 
@@ -90,23 +93,26 @@ class OverworldController:
         event_bus: EventBus,
         act: int = 1,
         current_tick: int = 0,
+        rng: random.Random = None,
     ) -> "OverworldController":
         """
         Factory method: wire up a complete OverworldController with default settings.
 
-        Creates MapState, QuestSpawner, ShopSpawner, BossTimer, and
-        CriticalInjector with sensible defaults for Act 1.
+        Randomly selects the act boss, creates ActRunState, and wires up the
+        boss-specific CriticalInjector so the right critical quests appear
+        during the act.
         """
+        act_run_state = new_act_run_state(act, rng)
         map_state = MapState(
             current_act=act,
             act_start_tick=current_tick,
-            # Pre-create the boss slot so BossTimer always has a target
-            boss=BossSlot(boss_id="boss_1", act=act),
+            boss=BossSlot(boss_id=act_run_state.boss_id, act=act),
+            act_run_state=act_run_state,
         )
         quest_spawner = QuestSpawner(event_bus=event_bus)
         shop_spawner = ShopSpawner(event_bus=event_bus)
         boss_timer = BossTimer(event_bus=event_bus)
-        critical_injector = build_default_injector(current_tick)
+        critical_injector = build_critical_injector(act_run_state.boss_id, current_tick)
         return cls(
             event_bus=event_bus,
             map_state=map_state,

@@ -12,6 +12,7 @@
   "constitution": 10,
   "base_dice_count": 5,
   "base_dice_sides": 6,
+  "gold_steal": true,
   "skills": [
     {
       "name": "Plunder",

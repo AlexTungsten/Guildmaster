@@ -1,0 +1,34 @@
+{
+  "enemy_id": "bandit_leader",
+  "name": "Bandit Leader",
+  "archetype": "bandit",
+  "tier": "elite",
+  "max_health": 40,
+  "current_health": 40,
+  "strength": 10,
+  "dexterity": 10,
+  "intelligence": 10,
+  "charisma": 10,
+  "constitution": 10,
+  "base_dice_count": 4,
+  "base_dice_sides": 4,
+  "gold_steal": true,
+  "skills": [
+    {
+      "name": "Slash",
+      "description": "Deal dice damage to a single hero. Apply 1 Weak.",
+      "associated_stat": "strength",
+      "dice_slots": 2,
+      "effect_type": "damage",
+      "special": "weak"
+    },
+    {
+      "name": "Assassinate",
+      "description": "Accumulates over 2 turns with 4d4 pool. On trigger deal dice damage (sum of all 8 stored dice).",
+      "associated_stat": "dexterity",
+      "dice_slots": 8,
+      "effect_type": "damage",
+      "special": null
+    }
+  ]
+}

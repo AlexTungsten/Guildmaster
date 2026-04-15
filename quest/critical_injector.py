@@ -14,6 +14,7 @@ from dataclasses import dataclass, field
 from typing import List, Optional, Set
 
 from quest.quest_model import Quest, Consequence, QuestType, QuestDifficulty, Reward
+from typing import Optional
 
 
 @dataclass
@@ -42,6 +43,79 @@ class CriticalInjector:
     def reset(self) -> None:
         """Clear injected tracking so quests can fire again (for new act)."""
         self._injected.clear()
+
+
+def build_critical_injector(boss_id: str, act_start_tick: int) -> "CriticalInjector":
+    """
+    Build a CriticalInjector with boss-specific critical quest windows.
+
+    Each boss injects 2 windows during the act.  The quests in each window
+    carry the enemy composition and boss_context so QuestExecutor can resolve
+    them correctly and write results back to ActRunState.
+
+    Baron Midas   — 2x Bandit Captain + 1x Bandit Leader; gold steal feeds Midas HP.
+    Cursed Knight — Cursed Knight flee-timer encounter; damage reduces boss HP.
+    Kobold King   — 1x Kobold + 2x Kobold Tinkerer; completions reduce guard quality.
+    """
+    _COMPOSITIONS = {
+        "baron_midas":   ["bandit_captain", "bandit_captain", "bandit_leader"],
+        "cursed_knight": ["cursed_knight"],
+        "kobold_king":   ["kobold", "kobold_tinkerer", "kobold_tinkerer"],
+    }
+    _TITLES = {
+        "baron_midas":   ("Bandit Gold Shipment", "Final Bandit Push"),
+        "cursed_knight": ("Cursed Knight Patrol", "Cursed Knight Resurgence"),
+        "kobold_king":   ("Kobold Advance Party", "Kobold Tinkerer Ambush"),
+    }
+    _DESCRIPTIONS = {
+        "baron_midas":   (
+            "A heavily guarded bandit convoy is moving through the region. Stop them before the gold reaches Midas.",
+            "The bandits are making one last push to deliver their haul. Intercept them now.",
+        ),
+        "cursed_knight": (
+            "Reports of a cursed knight terrorizing nearby settlements. He never stays long — act fast.",
+            "The cursed knight has been spotted again. Engage before he retreats.",
+        ),
+        "kobold_king":   (
+            "A kobold scouting party is casing the roads ahead. Drive them off.",
+            "Kobold tinkerers are setting traps near the king's hideout. Dismantle them.",
+        ),
+    }
+    _CONSEQUENCES = {
+        "baron_midas":   ("baron_midas_unchecked", "Midas accumulates extra gold — boss gains +50 HP"),
+        "cursed_knight": ("cursed_knight_healed",  "The knight recovers — boss starts at full HP"),
+        "kobold_king":   ("kobold_reinforced",      "Guards are reinforced — boss starts with stronger guards"),
+    }
+
+    composition = _COMPOSITIONS.get(boss_id, [])
+    titles = _TITLES.get(boss_id, ("Critical Quest", "Critical Quest"))
+    descs = _DESCRIPTIONS.get(boss_id, ("", ""))
+    cons_types = _CONSEQUENCES.get(boss_id, ("boss_buff", "boss_buff"))
+
+    windows = []
+    for i, (title, desc, cons_type) in enumerate(zip(titles, descs, cons_types)):
+        quest_id = f"critical_{boss_id}_{act_start_tick}_{i}"
+        windows.append(CriticalWindow(
+            inject_at_tick=act_start_tick + 200 * (i + 1),
+            quest=Quest(
+                quest_id=quest_id,
+                title=title,
+                description=desc,
+                quest_type=QuestType.COMBAT,
+                difficulty=QuestDifficulty.ELITE,
+                is_critical=True,
+                required_heroes=2,
+                travel_time=40,
+                resolution_time=80,
+                base_exhaustion=20.0,
+                reward=Reward(gold=150, xp=200),
+                consequence=Consequence(type=cons_type, data={"boss_id": boss_id}),
+                enemy_composition=list(composition),
+                boss_context=boss_id,
+            ),
+        ))
+
+    return CriticalInjector(windows=windows)
 
 
 def build_default_injector(act_start_tick: int) -> "CriticalInjector":

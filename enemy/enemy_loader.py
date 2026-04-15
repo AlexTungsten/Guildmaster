@@ -3,7 +3,8 @@ enemy_loader.py — Loads enemy templates from JSON data files.
 
 Each enemy JSON file in data/enemies/ defines the full template for one enemy
 type: stats, dice configuration, and skill list.  load_enemy() reads the file,
-instantiates the enemy via make_enemy(), and applies act scaling.
+selects the appropriate Enemy subclass for enemies with special mechanics, and
+applies act scaling.
 """
 
 import json
@@ -14,10 +15,28 @@ from enemy.enemy import Enemy, make_enemy
 
 _DATA_DIR = os.path.join(os.path.dirname(__file__), "..", "data", "enemies")
 
+# Maps enemy_id -> subclass for enemies that need special combat behaviour
+def _get_special_classes():
+    from enemy.special_enemies import (
+        WerewolfEnemy,
+        KoboldTinkererEnemy,
+        BanditLeaderEnemy,
+        CursedKnightEnemy,
+    )
+    return {
+        "werewolf":       WerewolfEnemy,
+        "kobold_tinkerer": KoboldTinkererEnemy,
+        "bandit_leader":  BanditLeaderEnemy,
+        "cursed_knight":  CursedKnightEnemy,
+    }
+
 
 def load_enemy(enemy_id: str, act: int) -> Enemy:
     """
     Load an enemy template from JSON and return a scaled Enemy instance.
+
+    Special enemies (werewolf, kobold_tinkerer, bandit_leader, cursed_knight)
+    are instantiated as their specific subclasses.
 
     Parameters
     ----------
@@ -31,7 +50,9 @@ def load_enemy(enemy_id: str, act: int) -> Enemy:
     with open(path, "r") as f:
         template = json.load(f)
 
-    return make_enemy(template, act)
+    special = _get_special_classes()
+    klass = special.get(enemy_id, Enemy)
+    return make_enemy(template, act, klass=klass)
 
 
 def list_enemies() -> List[str]:

@@ -1,0 +1,33 @@
+{
+  "enemy_id": "werewolf",
+  "name": "Werewolf",
+  "archetype": "werewolf",
+  "tier": "elite",
+  "max_health": 35,
+  "current_health": 35,
+  "strength": 10,
+  "dexterity": 10,
+  "intelligence": 10,
+  "charisma": 10,
+  "constitution": 10,
+  "base_dice_count": 3,
+  "base_dice_sides": 6,
+  "skills": [
+    {
+      "name": "Bite",
+      "description": "Deal dice damage to a single hero. Apply 1 Bleed.",
+      "associated_stat": "strength",
+      "dice_slots": 1,
+      "effect_type": "damage",
+      "special": "bleed"
+    },
+    {
+      "name": "Slash",
+      "description": "Deal dice damage to all heroes.",
+      "associated_stat": "strength",
+      "dice_slots": 1,
+      "effect_type": "aoe",
+      "special": null
+    }
+  ]
+}

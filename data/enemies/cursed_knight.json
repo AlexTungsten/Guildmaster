@@ -1,0 +1,41 @@
+{
+  "enemy_id": "cursed_knight",
+  "name": "Cursed Knight",
+  "archetype": "cursed_knight",
+  "tier": "critical_quest_boss",
+  "max_health": 250,
+  "current_health": 250,
+  "strength": 10,
+  "dexterity": 10,
+  "intelligence": 10,
+  "charisma": 10,
+  "constitution": 10,
+  "base_dice_count": 3,
+  "base_dice_sides": 4,
+  "skills": [
+    {
+      "name": "Slash",
+      "description": "Deal dice damage to a single hero. Apply 1 Bleed. Gain bloodlust equal to damage dealt.",
+      "associated_stat": "strength",
+      "dice_slots": 1,
+      "effect_type": "damage",
+      "special": "bleed"
+    },
+    {
+      "name": "Worn Down Shield",
+      "description": "Gain dice block.",
+      "associated_stat": "constitution",
+      "dice_slots": 1,
+      "effect_type": "defend",
+      "special": null
+    },
+    {
+      "name": "Blood Cleave",
+      "description": "Deal dice damage to all heroes. Apply 1 Bleed to all. Gain bloodlust equal to total damage dealt.",
+      "associated_stat": "strength",
+      "dice_slots": 2,
+      "effect_type": "aoe",
+      "special": "bleed"
+    }
+  ]
+}

@@ -12,6 +12,8 @@
   "constitution": 10,
   "base_dice_count": 3,
   "base_dice_sides": 6,
+  "gold_steal": true,
+  "flee_after_turns": 5,
   "skills": [
     {
       "name": "Stab",

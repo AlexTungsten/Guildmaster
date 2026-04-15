@@ -1,0 +1,33 @@
+{
+  "boss_id": "cursed_knight",
+  "name": "Cursed Knight",
+  "archetype": "cursed_knight_boss",
+  "base_health": 250,
+  "base_dice_count": 3,
+  "base_dice_sides": 4,
+  "skills": [
+    {
+      "name": "Slash",
+      "description": "A bloodthirsty strike that draws bloodlust.",
+      "associated_stat": "STR",
+      "dice_slots": 1,
+      "effect_type": "damage",
+      "special": "bleed"
+    },
+    {
+      "name": "Worn Down Shield",
+      "description": "A battered defensive stance.",
+      "associated_stat": "CON",
+      "dice_slots": 1,
+      "effect_type": "defend"
+    },
+    {
+      "name": "Blood Cleave",
+      "description": "A sweeping blow charged with bloodlust — hits all heroes.",
+      "associated_stat": "STR",
+      "dice_slots": 2,
+      "effect_type": "aoe",
+      "special": "bleed"
+    }
+  ]
+}

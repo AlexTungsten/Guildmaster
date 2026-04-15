@@ -68,6 +68,36 @@ class Enemy:
     # Active status effects (List[StatusEffect] typed as List to avoid circular import)
     status_effects: List[Any] = field(default_factory=list)
 
+    # --- Passive flags (serialised in JSON) ---
+    gold_steal: bool = False        # every hit publishes gold.stolen event (+5 gold)
+    flee_after_turns: int = 0       # 0 = never flee; >0 = flee after N turns
+
+    # Retaliate: activates when Trap skill fires; consumed on first hero hit
+    retaliate_damage: int = 0       # direct HP damage to attacker on retaliate
+    retaliate_active: bool = False  # True while block is up and retaliate is live
+
+    # Absolute untargetable: immune to ALL damage including AOE (Kobold King).
+    # Distinct from BanditLeader's conditional untargetable (AOE bypasses that one).
+    absolute_untargetable: bool = False
+
+    # Hidden: not displayed, not targetable, does not act (Mech during Phase 1).
+    # Set to False on phase transition to reveal the entity.
+    hidden: bool = field(default=False, compare=False, repr=False)
+
+    # --- Runtime state (not serialised) ---
+    turns_taken: int = field(default=0, compare=False, repr=False)
+    fled: bool = field(default=False, compare=False, repr=False)
+
+    # Spawned-entity support: subclasses/take_turn append entities here;
+    # the combat engine drains this list each turn.
+    spawn_queue: List[Any] = field(default_factory=list, compare=False, repr=False)
+
+    # Set on spawned entities to the owning enemy instance (not serialised)
+    owner_ref: Any = field(default=None, compare=False, repr=False)
+
+    # If True, this entity acts on the same turn it was spawned (Werewolf wolves)
+    acts_this_turn: bool = field(default=False, compare=False, repr=False)
+
     def __post_init__(self) -> None:
         """Ensure one buffer list exists per skill."""
         if not self.skill_buffers:
@@ -115,6 +145,10 @@ class Enemy:
     def clear_status(self, status_type: Any) -> None:
         self.status_effects = [e for e in self.status_effects if e.status_type != status_type]
 
+    def on_damage_taken(self, amount: int) -> None:
+        """Hook called when real HP damage is dealt. Subclasses override for special reactions."""
+        pass
+
     def take_damage(self, amount: int) -> int:
         """
         Apply incoming damage, consuming block first.
@@ -127,6 +161,8 @@ class Enemy:
         remaining = amount - blocked
         actual = min(remaining, self.current_health)
         self.current_health -= actual
+        if actual > 0:
+            self.on_damage_taken(actual)
         return actual
 
     # ------------------------------------------------------------------
@@ -152,14 +188,23 @@ class Enemy:
         turn are discarded (encounter dice counts are designed to prevent this
         being significant).
         """
-        # Step 1 — expire block
+        # Step 0 — count this turn
+        self.turns_taken += 1
+
+        # Step 1 — expire block and retaliate
         self.block = 0
+        self.retaliate_active = False
 
         # Step 2 — roll
         die_queue: List[int] = [
             rng.randint(1, self.base_dice_sides)
             for _ in range(self.base_dice_count)
         ]
+
+        # Bleed: discard 1 random die (minimum 1 die kept)
+        from combat.status_effects import has_status, StatusType
+        if has_status(self.status_effects, StatusType.BLEED) and len(die_queue) > 1:
+            die_queue.pop(rng.randrange(len(die_queue)))
 
         # Step 3 — distribute dice to skills in slot order
         triggered: List[Tuple[Skill, int]] = []
@@ -220,6 +265,9 @@ class Enemy:
             "skill_buffers": [list(buf) for buf in self.skill_buffers],
             "block": self.block,
             "status_effects": [e.to_dict() for e in self.status_effects],
+            "gold_steal": self.gold_steal,
+            "flee_after_turns": self.flee_after_turns,
+            "retaliate_damage": self.retaliate_damage,
         }
 
     @classmethod
@@ -246,19 +294,23 @@ class Enemy:
             skill_buffers=skill_buffers,
             block=data.get("block", 0),
             status_effects=_load_status_effects(data.get("status_effects", [])),
+            gold_steal=data.get("gold_steal", False),
+            flee_after_turns=data.get("flee_after_turns", 0),
+            retaliate_damage=data.get("retaliate_damage", 0),
         )
 
 
-def make_enemy(template: dict, act: int) -> Enemy:
+def make_enemy(template: dict, act: int, klass=None) -> "Enemy":
     """
-    Instantiate and scale an Enemy from a data template dict.
+    Instantiate and scale an Enemy (or subclass) from a data template dict.
 
-    The template uses the same field names as Enemy.to_dict().  After
-    construction the enemy is scaled for the given act via scale_for_act().
+    Pass klass to use a specific Enemy subclass (e.g. WerewolfEnemy).
     Skill buffers always start empty regardless of what the template contains.
     """
+    if klass is None:
+        klass = Enemy
     skills = [Skill.from_dict(s) for s in template.get("skills", [])]
-    enemy = Enemy(
+    enemy = klass(
         enemy_id=template["enemy_id"],
         name=template["name"],
         archetype=template["archetype"],
@@ -276,6 +328,9 @@ def make_enemy(template: dict, act: int) -> Enemy:
         skill_buffers=[[] for _ in skills],
         block=0,
         status_effects=[],
+        gold_steal=template.get("gold_steal", False),
+        flee_after_turns=template.get("flee_after_turns", 0),
+        retaliate_damage=template.get("retaliate_damage", 0),
     )
     enemy.scale_for_act(act)
     return enemy

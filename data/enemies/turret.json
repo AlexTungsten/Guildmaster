@@ -1,0 +1,25 @@
+{
+  "enemy_id": "turret",
+  "name": "Turret",
+  "archetype": "turret",
+  "tier": "spawned",
+  "max_health": 10,
+  "current_health": 10,
+  "strength": 10,
+  "dexterity": 10,
+  "intelligence": 10,
+  "charisma": 10,
+  "constitution": 10,
+  "base_dice_count": 1,
+  "base_dice_sides": 6,
+  "skills": [
+    {
+      "name": "Shoot",
+      "description": "Deal dice damage to a single hero.",
+      "associated_stat": "dexterity",
+      "dice_slots": 1,
+      "effect_type": "damage",
+      "special": null
+    }
+  ]
+}

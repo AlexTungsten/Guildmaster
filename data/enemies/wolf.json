@@ -1,0 +1,33 @@
+{
+  "enemy_id": "wolf",
+  "name": "Wolf",
+  "archetype": "wolf",
+  "tier": "common",
+  "max_health": 15,
+  "current_health": 15,
+  "strength": 10,
+  "dexterity": 10,
+  "intelligence": 10,
+  "charisma": 10,
+  "constitution": 10,
+  "base_dice_count": 2,
+  "base_dice_sides": 4,
+  "skills": [
+    {
+      "name": "Bite",
+      "description": "Deal dice damage to a single hero. Apply 1 Bleed.",
+      "associated_stat": "strength",
+      "dice_slots": 1,
+      "effect_type": "damage",
+      "special": "bleed"
+    },
+    {
+      "name": "Howl",
+      "description": "All allied enemies gain +1 flat damage for the next round.",
+      "associated_stat": "charisma",
+      "dice_slots": 1,
+      "effect_type": "buff",
+      "special": "howl"
+    }
+  ]
+}

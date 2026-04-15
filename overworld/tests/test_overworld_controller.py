@@ -146,10 +146,11 @@ class TestOverworldControllerCreate(unittest.TestCase):
         self.assertEqual(controller.map_state.current_act, 2)
 
     def test_create_sets_boss(self):
+        from game_runtime.act_run_state import ACT1_BOSS_IDS
         bus = EventBus()
         controller = OverworldController.create(bus, act=1, current_tick=0)
         self.assertIsNotNone(controller.map_state.boss)
-        self.assertEqual(controller.map_state.boss.boss_id, "boss_1")
+        self.assertIn(controller.map_state.boss.boss_id, ACT1_BOSS_IDS)
 
     def test_create_has_all_subsystems(self):
         bus = EventBus()

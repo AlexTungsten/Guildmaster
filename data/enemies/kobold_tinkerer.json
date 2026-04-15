@@ -1,0 +1,42 @@
+{
+  "enemy_id": "kobold_tinkerer",
+  "name": "Kobold Tinkerer",
+  "archetype": "kobold",
+  "tier": "common",
+  "max_health": 25,
+  "current_health": 25,
+  "strength": 10,
+  "dexterity": 10,
+  "intelligence": 10,
+  "charisma": 10,
+  "constitution": 10,
+  "base_dice_count": 4,
+  "base_dice_sides": 6,
+  "retaliate_damage": 3,
+  "skills": [
+    {
+      "name": "Shovel Slam",
+      "description": "Deal dice damage to a single hero.",
+      "associated_stat": "strength",
+      "dice_slots": 1,
+      "effect_type": "damage",
+      "special": null
+    },
+    {
+      "name": "Trap",
+      "description": "Gain dice block. Retaliate: on first hit while block is active deal 3 damage to attacker and apply 1 Bleed. Consumed after one trigger.",
+      "associated_stat": "constitution",
+      "dice_slots": 1,
+      "effect_type": "defend",
+      "special": "trap"
+    },
+    {
+      "name": "Turret",
+      "description": "If no Turret is alive spawn a new Turret with HP equal to dice result. Turret acts starting next turn.",
+      "associated_stat": "intelligence",
+      "dice_slots": 3,
+      "effect_type": "spawn",
+      "special": "spawn_turret"
+    }
+  ]
+}

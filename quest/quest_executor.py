@@ -40,6 +40,7 @@ from quest.travel_phase import roll_travel_events, apply_travel_outcomes
 from quest.stat_check_resolver import resolve_stat_check
 from quest.reward_distributor import distribute_rewards
 from combat.combat_engine import CombatEngine
+from game_runtime.act_run_state import ActRunState
 
 _ENCOUNTER_PATH = os.path.join(
     os.path.dirname(__file__), "..", "data", "encounters.json"
@@ -61,6 +62,7 @@ class QuestExecutor:
         combat_engine: CombatEngine,
         time_engine: Optional[TimeEngine] = None,
         heal_percent: float = 1.0,
+        act_run_state: Optional[ActRunState] = None,
     ):
         self._event_bus = event_bus
         self._time_engine = time_engine
@@ -68,6 +70,7 @@ class QuestExecutor:
         self._roster = roster
         self._ledger = ledger
         self._combat_engine = combat_engine
+        self._act_run_state = act_run_state
         self._assignment = HeroAssignment(event_bus)
         self._heal_percent = heal_percent
         self._encounter_table = _load_encounter_table()
@@ -77,10 +80,15 @@ class QuestExecutor:
         # Each entry: {quest, heroes, enemies, victory, combat_result, distribution}
         self._active_quests: Dict[str, dict] = {}
 
+        # Accumulates gold.stolen events during a baron_midas critical quest
+        self._pending_gold_steal: int = 0
+        self._gold_steal_quest_active: bool = False
+
         self._event_bus.subscribe("player.assign_quest", self._on_assign_quest)
         self._event_bus.subscribe("quest.phase.arrive", self._on_quest_arrive)
         self._event_bus.subscribe("quest.phase.return", self._on_quest_return)
         self._event_bus.subscribe("quest.phase.heroes_back", self._on_heroes_back)
+        self._event_bus.subscribe("gold.stolen", self._on_gold_stolen)
 
     # ------------------------------------------------------------------
     # Phase 0 — Assignment
@@ -177,10 +185,17 @@ class QuestExecutor:
             victory = outcome.any_passed
 
         elif quest.quest_type == QuestType.COMBAT and enemies:
+            # Arm gold-steal tracker for baron_midas critical quests
+            if quest.is_critical and quest.boss_context == "baron_midas":
+                self._pending_gold_steal = 0
+                self._gold_steal_quest_active = True
+
             pre_result = self._combat_engine.pre_simulate(heroes, enemies)
             self._event_bus.publish("quest.pre_simulation_ready", pre_result)
             combat_result = self._combat_engine.simulate(heroes, enemies)
             victory = combat_result.victory
+
+            self._gold_steal_quest_active = False
 
         state["victory"] = victory
         state["combat_result"] = combat_result
@@ -264,6 +279,27 @@ class QuestExecutor:
         quest.status = QuestStatus.COMPLETE
         self._map_state.remove_quest(quest_id)
 
+        # --- ActRunState write-backs for critical quests ---
+        if victory and quest.is_critical and self._act_run_state is not None:
+            ctx = quest.boss_context
+            if ctx == "baron_midas":
+                self._act_run_state.record_gold_stolen(self._pending_gold_steal)
+                self._pending_gold_steal = 0
+
+            elif ctx == "cursed_knight":
+                # Sum up damage dealt to CursedKnightEnemy instances in this quest
+                combat_result = state.get("combat_result")
+                if combat_result is not None:
+                    from enemy.special_enemies import CursedKnightEnemy
+                    for enemy in combat_result.enemies_final:
+                        if isinstance(enemy, CursedKnightEnemy):
+                            self._act_run_state.record_cursed_knight_damage(
+                                enemy.damage_taken_this_encounter
+                            )
+
+            elif ctx == "kobold_king":
+                self._act_run_state.record_critical_quest_completed()
+
         self._event_bus.publish("quest.executed", {
             "quest_id": quest_id,
             "victory": victory,
@@ -274,8 +310,26 @@ class QuestExecutor:
     # Helpers
     # ------------------------------------------------------------------
 
+    def _on_gold_stolen(self, data: dict) -> None:
+        """Accumulate gold-steal events while a baron_midas critical quest is resolving."""
+        if self._gold_steal_quest_active:
+            self._pending_gold_steal += data.get("amount", 5)
+
     def _spawn_enemies(self, quest: Quest) -> List[Enemy]:
-        act_key = f"act_{self._map_state.current_act}"
+        act = self._map_state.current_act
+
+        # Critical quests carry their own enemy composition
+        if quest.enemy_composition:
+            enemies = []
+            for eid in quest.enemy_composition:
+                try:
+                    enemies.append(load_enemy(eid, act))
+                except FileNotFoundError:
+                    pass
+            return enemies
+
+        # Normal quests draw from the encounter table
+        act_key = f"act_{act}"
         difficulty = quest.difficulty.value
         compositions = self._encounter_table.get(act_key, {}).get(difficulty, [])
         if not compositions:
@@ -284,7 +338,7 @@ class QuestExecutor:
         enemies = []
         for eid in chosen.get("enemies", []):
             try:
-                enemies.append(load_enemy(eid, self._map_state.current_act))
+                enemies.append(load_enemy(eid, act))
             except FileNotFoundError:
                 pass
         return enemies
