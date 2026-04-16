@@ -36,7 +36,7 @@ def _build_skill(data: dict) -> Skill:
         dice_slots=data["dice_slots"],
         effect_type=data["effect_type"],
         special=data.get("special"),
-        refresh_cost=data.get("refresh_cost", 0),
+        charge_cost=data.get("charge_cost", data.get("refresh_cost", 0)),
     )
 
 

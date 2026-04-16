@@ -16,7 +16,7 @@
     {
       "passive_id": "ironhide",
       "name": "Ironhide",
-      "description": "Exhaustion locked dice are d6s instead of d4s",
+      "description": "Exhaustion locked dice are d6s instead of d4s.",
       "effect_type": "locked_dice_override",
       "value": 6
     }
@@ -24,7 +24,7 @@
   "skills": [
     {
       "name": "Bash",
-      "description": "Deal dice + STR damage to a single enemy",
+      "description": "Deal dice + STR damage to a single enemy.",
       "associated_stat": "strength",
       "dice_slots": 1,
       "effect_type": "damage",
@@ -40,11 +40,53 @@
     },
     {
       "name": "Bloodletting",
-      "description": "Track all damage taken this turn including self-inflicted up to dice + CON. Convert tracked damage to temp HP at start of next turn. New application replaces existing temp HP.",
+      "description": "Track all damage taken this turn (including self-inflicted) up to dice + CON. Convert tracked damage to temp HP at start of next turn.",
       "associated_stat": "constitution",
       "dice_slots": 2,
       "effect_type": "defend",
       "special": "bloodletting"
+    }
+  ],
+  "learnable_skills": [
+    {
+      "name": "Desperate Strike",
+      "description": "Deal damage scaled by missing HP. Multiplier ranges from 1.0 at full HP to 2.0 at 1 HP.",
+      "associated_stat": "strength",
+      "dice_slots": 2,
+      "effect_type": "damage",
+      "special": "desperate_strike"
+    },
+    {
+      "name": "Lifeblood Slam",
+      "description": "Spend 10% current HP (temp HP first, floors at 1). Deal dice + CON to all enemies. Allies gain temp HP equal to half the damage dealt.",
+      "associated_stat": "constitution",
+      "dice_slots": 2,
+      "effect_type": "aoe",
+      "special": "lifeblood_slam"
+    },
+    {
+      "name": "Primal Roar",
+      "description": "Gain temp HP equal to dice + CON. Apply 1 Weak to all enemies for 1 turn.",
+      "associated_stat": "constitution",
+      "dice_slots": 1,
+      "effect_type": "self",
+      "special": "primal_roar"
+    },
+    {
+      "name": "Battle Worn",
+      "description": "Deal dice + STR + (exhaustion_level x 2) damage to a single enemy.",
+      "associated_stat": "strength",
+      "dice_slots": 2,
+      "effect_type": "damage",
+      "special": "battle_worn"
+    },
+    {
+      "name": "Second Wind",
+      "description": "Once per combat. Reduce exhaustion by dice result. Gain temp HP equal to exhaustion_level x dice result. Heal exhaustion_level x CON modifier real HP.",
+      "associated_stat": "constitution",
+      "dice_slots": 2,
+      "effect_type": "self",
+      "special": "second_wind"
     }
   ]
 }

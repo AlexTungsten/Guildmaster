@@ -1,0 +1,10 @@
+{
+  "item_id": "smelling_salts",
+  "name": "Smelling Salts",
+  "description": "Apply at the start of combat to gain 8 temp HP.",
+  "trigger": "on_combat_start",
+  "effect": "add_temp_hp",
+  "value": 8,
+  "auto_trigger": true,
+  "charges": 1
+}

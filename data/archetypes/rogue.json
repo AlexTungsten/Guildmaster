@@ -4,7 +4,7 @@
   "base_dice_count": 7,
   "base_dice_sides": 6,
   "max_health": 25,
-  "item_slots": 2,
+  "item_slots": 1,
   "stats": {
     "strength": 8,
     "dexterity": 16,
@@ -24,7 +24,7 @@
   "skills": [
     {
       "name": "Poisoned Dagger",
-      "description": "Deal dice + DEX damage to a single enemy and apply Poison.",
+      "description": "Deal dice + DEX damage to a single enemy. Apply Poison (potency = dice result, duration 2 turns). Higher potency wins on reapply; durations add.",
       "associated_stat": "dexterity",
       "dice_slots": 2,
       "effect_type": "damage",
@@ -32,7 +32,7 @@
     },
     {
       "name": "Knockout",
-      "description": "Deal dice + DEX damage to a single enemy and apply Vulnerable.",
+      "description": "Deal dice + DEX damage to a single enemy and apply Vulnerable for 1 turn.",
       "associated_stat": "dexterity",
       "dice_slots": 1,
       "effect_type": "damage",
@@ -40,11 +40,53 @@
     },
     {
       "name": "Eviscerate",
-      "description": "Strike a single enemy multiple times. Hit count equals sum of 2 dice. Each hit deals 2 + DEX damage (4 + DEX if target has any debuff).",
+      "description": "Strike a single enemy multiple times. Hit count equals sum of all 4 dice. Each hit deals 2 + DEX damage (4 + DEX if target has any active debuff).",
+      "associated_stat": "dexterity",
+      "dice_slots": 4,
+      "effect_type": "damage",
+      "special": "eviscerate"
+    }
+  ],
+  "learnable_skills": [
+    {
+      "name": "Quick Jab",
+      "description": "Deal DEX modifier damage per die assigned to this skill. Exempt from Thousand Cuts double-fire.",
+      "associated_stat": "dexterity",
+      "dice_slots": 1,
+      "effect_type": "damage",
+      "special": "quick_jab"
+    },
+    {
+      "name": "Blade Dance",
+      "description": "Deal DEX modifier x (dice assigned to all other skills this turn) damage to a single enemy. Blade Dance's own dice do not count.",
       "associated_stat": "dexterity",
       "dice_slots": 2,
       "effect_type": "damage",
-      "special": "eviscerate"
+      "special": "blade_dance"
+    },
+    {
+      "name": "Crippling Strike",
+      "description": "Deal dice + DEX damage. Apply Bleed for (dice result) turns. Apply Weak for 1 turn.",
+      "associated_stat": "dexterity",
+      "dice_slots": 2,
+      "effect_type": "damage",
+      "special": "crippling_strike"
+    },
+    {
+      "name": "Cheap Shot",
+      "description": "Deal dice + DEX damage. If target has 3 or more total debuff stacks, apply 2 Paralyze.",
+      "associated_stat": "dexterity",
+      "dice_slots": 2,
+      "effect_type": "damage",
+      "special": "cheap_shot"
+    },
+    {
+      "name": "Evasion",
+      "description": "Reduce all incoming damage this turn by dice + DEX. Expires at end of turn.",
+      "associated_stat": "dexterity",
+      "dice_slots": 1,
+      "effect_type": "self",
+      "special": "evasion"
     }
   ]
 }

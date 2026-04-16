@@ -1,0 +1,11 @@
+{
+  "item_id": "herb_potion",
+  "name": "Herb Potion",
+  "description": "When HP drops to 50% or below, automatically restore 10 HP.",
+  "trigger": "at_hp_threshold",
+  "threshold": 0.5,
+  "effect": "heal_hp",
+  "value": 10,
+  "auto_trigger": true,
+  "charges": 1
+}

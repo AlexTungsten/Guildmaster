@@ -9,17 +9,20 @@ The dice system works as follows:
 
 Status-effect modifiers applied before / during rolling (in order):
   1. Upgrade / Downgrade — raise or lower all die tiers (including locked dice).
-     Upgrade also improves locked dice tier by one step.
   2. Bleed — discard 1 random die from the pool (minimum 1 die remains).
   3. Roll each die, applying Advantage (keep best of 2) or Disadvantage
      (keep worst of 2) per die.
-  4. Lucky Roll passive (Rogue) — reroll the single lowest kept result.
-  5. Paralyze — after rolling, set N dice results to 1 (all stacks expire EOT).
+  4. Lucky Roll passive (Rogue) — reroll the single lowest kept result;
+     keep the new value regardless.
+     Upgrade: reroll the 3 lowest, keeping the better of original vs new for each.
+  5. Thousand Cuts passive (Rogue level-3) — reroll the 2 lowest results,
+     keeping the better of original vs new for each.
+  6. Paralyze — after rolling, set N dice results to 1 (all stacks expire EOT).
 """
 
 import random
 from dataclasses import dataclass
-from typing import List, Optional, Tuple
+from typing import List
 
 from hero.hero_entity import HeroEntity
 
@@ -93,22 +96,29 @@ def roll_pool(
     status_effects: List,
     rng: random.Random,
     has_lucky_roll: bool = False,
+    lucky_roll_upgraded: bool = False,
+    has_thousand_cuts: bool = False,
 ) -> List[int]:
     """
     Roll every die in the pool and return the results as a list of ints.
 
     Applies in order:
       1. Advantage (keep best of 2 rolls per die) or Disadvantage (keep worst).
-         Advantage resolves before Lucky Roll per the turn-order spec.
       2. Lucky Roll passive — reroll the single lowest result (keep new value).
-      3. Paralyze — set N dice to 1 after rolling (stacks determine N).
+         Upgraded Lucky Roll — reroll the 3 lowest, keep higher of each pair.
+      3. Thousand Cuts — reroll the 2 lowest, keep higher of each pair.
+         (Applied after Lucky Roll; stacks if both are active.)
+      4. Paralyze — set N dice to 1 after rolling (stacks determine N).
 
     Parameters
     ----------
-    pool            : Dice to roll (after apply_status_modifiers).
-    status_effects  : Active effects on the rolling hero / enemy.
-    rng             : Random source.
-    has_lucky_roll  : True when the hero has the Lucky Roll passive (Rogue).
+    pool                : Dice to roll (after apply_status_modifiers).
+    status_effects      : Active effects on the rolling hero.
+    rng                 : Random source.
+    has_lucky_roll      : True when the hero has the Lucky Roll passive.
+    lucky_roll_upgraded : True when Lucky Roll is at its level-5 upgrade
+                          (reroll 3 lowest, keep better).
+    has_thousand_cuts   : True when the hero has the Thousand Cuts passive.
     """
     from combat.status_effects import StatusType, has_status, get_status
 
@@ -128,13 +138,22 @@ def roll_pool(
         else:
             results.append(r1)
 
-    # Step 2 — Lucky Roll: reroll the single lowest kept result
+    # Step 2 — Lucky Roll
     if has_lucky_roll and results:
-        min_val = min(results)
-        min_idx = results.index(min_val)
-        results[min_idx] = rng.randint(1, pool[min_idx].sides)
+        if lucky_roll_upgraded:
+            # Upgraded: reroll 3 lowest, keep better of each
+            _reroll_n_lowest(results, pool, 3, keep_better=True, rng=rng)
+        else:
+            # Base: reroll single lowest, keep new value regardless
+            min_val = min(results)
+            min_idx = results.index(min_val)
+            results[min_idx] = rng.randint(1, pool[min_idx].sides)
 
-    # Step 3 — Paralyze: set N dice to 1 (first N in the list)
+    # Step 3 — Thousand Cuts: reroll 2 lowest, keep better of each
+    if has_thousand_cuts and results:
+        _reroll_n_lowest(results, pool, 2, keep_better=True, rng=rng)
+
+    # Step 4 — Paralyze: set N dice to 1 (first N in the list)
     paralyze = get_status(status_effects, StatusType.PARALYZE)
     if paralyze:
         count = min(paralyze.stacks, len(results))
@@ -142,3 +161,27 @@ def roll_pool(
             results[i] = 1
 
     return results
+
+
+def _reroll_n_lowest(
+    results: List[int],
+    pool: List[Die],
+    n: int,
+    keep_better: bool,
+    rng: random.Random,
+) -> None:
+    """
+    In-place: reroll the n lowest dice results.
+
+    If keep_better=True, keep whichever is higher between original and new roll.
+    Mutates results list directly.
+    """
+    if not results or n <= 0:
+        return
+    # Find indices of the n smallest values (stable: picks earlier indices on ties)
+    indexed = sorted(enumerate(results), key=lambda x: x[1])
+    for i in range(min(n, len(indexed))):
+        idx, original = indexed[i]
+        die_sides = pool[idx].sides if idx < len(pool) else 6
+        new_roll = rng.randint(1, die_sides)
+        results[idx] = max(original, new_roll) if keep_better else new_roll

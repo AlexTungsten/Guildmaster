@@ -4,7 +4,7 @@
   "base_dice_count": 5,
   "base_dice_sides": 10,
   "max_health": 20,
-  "item_slots": 2,
+  "item_slots": 1,
   "stats": {
     "strength": 7,
     "dexterity": 8,
@@ -14,40 +14,85 @@
   },
   "passives": [
     {
-      "passive_id": "prepared",
-      "name": "Prepared",
-      "description": "The first skill (slot 0) is immune to cooldown — it never goes on cooldown after firing.",
-      "effect_type": "prepared",
+      "passive_id": "serendipity",
+      "name": "Serendipity",
+      "description": "While Merlin is in the party, beneficial random events are weighted toward heroes' traits and backgrounds.",
+      "effect_type": "serendipity",
       "value": 1
     }
   ],
   "skills": [
     {
       "name": "Arcane Bolt",
-      "description": "Deal dice + INT damage to a single enemy. Never goes on cooldown.",
+      "description": "Deal dice + INT damage to a single enemy. Always fires immediately — no charge cost.",
       "associated_stat": "intelligence",
       "dice_slots": 1,
       "effect_type": "damage",
       "special": null,
-      "refresh_cost": 0
+      "element": "arcane",
+      "charge_cost": 0
     },
     {
       "name": "Fireball",
-      "description": "Deal dice + INT damage to all enemies and apply Burn. Goes on cooldown after use; refresh by spending dice worth a sum of 10.",
+      "description": "Charge: 10. When fully charged, deal 15 damage to all enemies and apply 2 Burn stacks.",
       "associated_stat": "intelligence",
       "dice_slots": 2,
       "effect_type": "aoe",
-      "special": "burn",
-      "refresh_cost": 10
+      "special": "fireball_charge",
+      "element": "fire",
+      "charge_cost": 10
     },
     {
       "name": "Barrier",
-      "description": "Grant the party a shared barrier equal to dice + INT HP. Expires at the start of the next round. Goes on cooldown after use; refresh by spending dice worth a sum of 15.",
+      "description": "Charge: 15. When fully charged, create a party barrier absorbing up to (20 + INT modifier) damage. Expires start of Mage's next turn.",
       "associated_stat": "intelligence",
       "dice_slots": 2,
       "effect_type": "defend",
-      "special": "barrier",
-      "refresh_cost": 15
+      "special": "barrier_charge",
+      "element": "arcane",
+      "charge_cost": 15
+    }
+  ],
+  "learnable_skills": [
+    {
+      "name": "Chain Lightning",
+      "description": "Charge: 15. Strike 3 random enemies for 10 damage each. Apply 1 Paralyze to each hit target.",
+      "associated_stat": "intelligence",
+      "dice_slots": 2,
+      "effect_type": "damage",
+      "special": "chain_lightning_charge",
+      "element": "lightning",
+      "charge_cost": 15
+    },
+    {
+      "name": "Blizzard",
+      "description": "Charge: 30. Deal 12 damage to all enemies immediately, then 12 more damage each of the next 2 turns. Apply Downgrade on cast.",
+      "associated_stat": "intelligence",
+      "dice_slots": 3,
+      "effect_type": "aoe",
+      "special": "blizzard_charge",
+      "element": "ice",
+      "charge_cost": 30
+    },
+    {
+      "name": "Earthquake",
+      "description": "Charge: 15. Deal 18 damage to all enemies. Apply Disadvantage to all enemies for 1 turn.",
+      "associated_stat": "intelligence",
+      "dice_slots": 2,
+      "effect_type": "aoe",
+      "special": "earthquake_charge",
+      "element": "earth",
+      "charge_cost": 15
+    },
+    {
+      "name": "Meteor",
+      "description": "Charge: 25. Deal 30 damage to a single target. Apply 3 Burn stacks to all enemies.",
+      "associated_stat": "intelligence",
+      "dice_slots": 2,
+      "effect_type": "damage",
+      "special": "meteor_charge",
+      "element": "fire",
+      "charge_cost": 25
     }
   ]
 }

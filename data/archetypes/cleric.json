@@ -4,7 +4,7 @@
   "base_dice_count": 4,
   "base_dice_sides": 8,
   "max_health": 28,
-  "item_slots": 2,
+  "item_slots": 3,
   "stats": {
     "strength": 8,
     "dexterity": 8,
@@ -14,10 +14,10 @@
   },
   "passives": [
     {
-      "passive_id": "mender",
-      "name": "Mender",
-      "description": "Heal skills restore 1 additional HP per CHA modifier point above the base.",
-      "effect_type": "mender",
+      "passive_id": "field_synthesis",
+      "name": "Field Synthesis",
+      "description": "After each quest Hildegard crafts 1 random consumable item from her medicinal pool. Item is added to an empty item slot if one is available.",
+      "effect_type": "field_synthesis",
       "value": 1
     }
   ],
@@ -32,7 +32,7 @@
     },
     {
       "name": "Cleanse",
-      "description": "Remove CHA modifier stacks from debuffs (oldest first) from ceil(dice_sum / 2) allies.",
+      "description": "Remove CHA modifier debuff stacks (oldest first) from the ceil(dice_result / 2) lowest-HP allies.",
       "associated_stat": "charisma",
       "dice_slots": 1,
       "effect_type": "cleanse",
@@ -40,11 +40,53 @@
     },
     {
       "name": "Heal",
-      "description": "Restore dice + CHA HP to the ally with the lowest current HP.",
+      "description": "Restore dice + CHA HP to the ally with the lowest current HP (including Hildegard).",
       "associated_stat": "charisma",
       "dice_slots": 1,
       "effect_type": "heal",
       "special": "heal"
+    }
+  ],
+  "learnable_skills": [
+    {
+      "name": "Regeneration",
+      "description": "Apply regeneration to the lowest-HP ally (including Hildegard). Heal (dice + CHA) HP at the start of that ally's next 3 turns.",
+      "associated_stat": "charisma",
+      "dice_slots": 2,
+      "effect_type": "heal",
+      "special": "regeneration"
+    },
+    {
+      "name": "Holy Smite",
+      "description": "Deal dice + CHA + (active buff count across all allies x CHA modifier) damage to a single enemy.",
+      "associated_stat": "charisma",
+      "dice_slots": 2,
+      "effect_type": "damage",
+      "special": "holy_smite"
+    },
+    {
+      "name": "Blessing",
+      "description": "Apply Upgrade to a single ally for 1 turn. Their dice gain 1 tier this turn.",
+      "associated_stat": "charisma",
+      "dice_slots": 1,
+      "effect_type": "buff",
+      "special": "blessing"
+    },
+    {
+      "name": "Battle Hymn",
+      "description": "All allies gain Advantage on their dice rolls next turn.",
+      "associated_stat": "charisma",
+      "dice_slots": 2,
+      "effect_type": "buff",
+      "special": "battle_hymn"
+    },
+    {
+      "name": "Fortify",
+      "description": "Grant a single ally block equal to dice + CON. On the first hit while block is active, deal CON modifier damage back to the attacker.",
+      "associated_stat": "constitution",
+      "dice_slots": 2,
+      "effect_type": "buff",
+      "special": "fortify"
     }
   ]
 }

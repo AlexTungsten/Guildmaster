@@ -1,0 +1,12 @@
+{
+  "item_id": "strength_salve",
+  "name": "Strength Salve",
+  "description": "Rub in before heading out. Gain +2 Strength for the duration of the quest.",
+  "trigger": "on_quest_start",
+  "effect": "temp_stat",
+  "stat": "strength",
+  "value": 2,
+  "duration": "quest",
+  "auto_trigger": true,
+  "charges": 1
+}

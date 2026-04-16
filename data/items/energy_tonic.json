@@ -1,0 +1,10 @@
+{
+  "item_id": "energy_tonic",
+  "name": "Energy Tonic",
+  "description": "Use to reduce exhaustion by 5.",
+  "trigger": "on_use",
+  "effect": "reduce_exhaustion",
+  "value": 5,
+  "auto_trigger": false,
+  "charges": 1
+}
