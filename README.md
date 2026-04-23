@@ -68,7 +68,16 @@ Guildmaster/
 │   ├── archetypes/             # Hero class definitions (barbarian, cleric, mage, rogue)
 │   ├── enemies/                # Enemy templates (11 types — see Enemy Types below)
 │   ├── bosses/                 # Boss definitions (baron_midas, cursed_knight, kobold_king)
+│   ├── items/                  # Item templates (herb_potion, energy_tonic, strength_salve, smelling_salts)
 │   └── encounters.json         # Difficulty-to-enemy spawn table per act
+│
+├── web/                    # Browser-based combat UI (Flask + vanilla JS)
+│   ├── server.py               # Flask REST server — run this to open the UI
+│   ├── combat_session.py       # Step-by-step combat wrapper (pause after dice roll, resume with assignments)
+│   └── static/
+│       ├── index.html          # Single-page app: setup screen + combat screen
+│       ├── style.css           # Dark RPG theme
+│       └── app.js              # Drag-and-drop dice assignment, card rendering, log
 │
 ├── ui/                     # Pure rendering layer and the main game loop
 │   ├── action_dispatcher.py    # Parses text commands and publishes player events to the bus
@@ -290,7 +299,39 @@ A two-phase encounter. Phase 1: King is untargetable; buffs a hidden Mech each t
 ### Requirements
 
 - Python 3.10 or later
-- No external dependencies — the standard library is sufficient
+- `flask` (web UI only) — install with `pip install flask`
+
+### Web Combat UI
+
+The browser UI lets you watch and control combat round by round with full drag-and-drop dice assignment.
+
+```bash
+pip install flask          # one-time setup
+python web/server.py
+# open http://localhost:5000
+```
+
+**Setup screen** — Choose up to 4 heroes (archetype + custom name) and up to 8 enemy groups (type, count, act). Preview stats and skills before starting.
+
+**Combat screen — Manual control:**
+
+| Step | Action |
+|------|--------|
+| 1 | Click **Roll Dice** — all heroes' dice are rolled and displayed |
+| 2 | Click a hero card to open its **assignment panel** |
+| 3 | Drag dice tokens from the pool onto skill drop zones |
+| 4 | Click an occupied slot to return the die to the pool |
+| 5 | Repeat for each hero, then click **Confirm Turn** |
+
+**Auto Turn** — Rolls, auto-assigns all heroes, and resolves the full round in one click. Can be mixed freely with manual turns.
+
+**Info panel** — Click any hero (when not assigning) or enemy card to see full stats, all skills with descriptions, status effects, and passives.
+
+**Enemy intent** — Each enemy card shows which skill it is building toward and how many dice away it is from firing.
+
+**Combat log** — Color-coded entries appear in real time: damage (orange), heals (green), enemy actions (red), status events (gray).
+
+---
 
 ### Run all tests
 

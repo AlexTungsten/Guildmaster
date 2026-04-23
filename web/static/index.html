@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Guildmaster — Combat</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<!-- ═══════════════════════════════════════════════════════════ SETUP SCREEN -->
+<div id="setup-screen" class="screen active">
+  <div class="setup-header">
+    <h1>⚔️ Guildmaster</h1>
+    <p class="subtitle">Configure your party and enemies, then begin combat.</p>
+  </div>
+
+  <div class="setup-body">
+    <!-- Heroes column -->
+    <div class="setup-col">
+      <div class="setup-col-header">
+        <h2>Heroes</h2>
+        <button id="add-hero-btn" class="btn btn-sm">+ Add Hero</button>
+      </div>
+      <div id="hero-builder"></div>
+    </div>
+
+    <!-- Enemies column -->
+    <div class="setup-col">
+      <div class="setup-col-header">
+        <h2>Enemies</h2>
+        <button id="add-enemy-btn" class="btn btn-sm">+ Add Enemy</button>
+      </div>
+      <div id="enemy-builder"></div>
+    </div>
+  </div>
+
+  <div class="setup-footer">
+    <button id="start-btn" class="btn btn-primary btn-lg">⚔️  Start Combat</button>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════ COMBAT SCREEN -->
+<div id="combat-screen" class="screen">
+
+  <!-- Top bar -->
+  <div class="combat-topbar">
+    <button id="back-to-setup-btn" class="btn btn-sm">← Setup</button>
+
+    <div class="topbar-center">
+      <span id="round-label" class="round-label">Round 0</span>
+      <span id="barrier-label" class="barrier-label hidden">🛡 Barrier: <b id="barrier-hp">0</b></span>
+    </div>
+
+    <div class="topbar-controls">
+      <!-- Manual mode controls -->
+      <button id="roll-btn"    class="btn btn-primary" title="Roll dice for all heroes">Roll Dice</button>
+      <button id="confirm-btn" class="btn btn-success" disabled title="Submit assignments and resolve round">Confirm Turn</button>
+      <!-- Always available -->
+      <button id="auto-btn"    class="btn btn-secondary" title="Auto-assign and resolve in one step">Auto Turn</button>
+    </div>
+  </div>
+
+  <!-- Status banner (victory / defeat) -->
+  <div id="outcome-banner" class="outcome-banner hidden"></div>
+
+  <!-- Battlefield -->
+  <div class="battlefield">
+    <div class="battlefield-side heroes-side">
+      <div class="side-label">Heroes</div>
+      <div id="hero-cards" class="cards-grid"></div>
+    </div>
+
+    <div class="battlefield-divider">VS</div>
+
+    <div class="battlefield-side enemies-side">
+      <div class="side-label">Enemies</div>
+      <div id="enemy-cards" class="cards-grid"></div>
+    </div>
+  </div>
+
+  <!-- Bottom panel: assignment + info + log -->
+  <div class="bottom-panel">
+
+    <!-- Dice assignment panel (shown when a hero is selected in manual mode) -->
+    <div id="assignment-panel" class="assignment-panel hidden">
+      <div class="panel-header">
+        <span id="assign-hero-name" class="panel-title"></span>
+        <div class="panel-header-actions">
+          <button id="auto-assign-hero-btn" class="btn btn-sm">Auto Assign</button>
+          <button id="clear-assign-btn"     class="btn btn-sm btn-danger">Clear</button>
+          <button id="close-assign-btn"     class="btn btn-sm">✕</button>
+        </div>
+      </div>
+      <div class="panel-body assign-body">
+        <!-- Unassigned dice pool -->
+        <div class="dice-pool-col">
+          <div class="pool-label">Dice Pool</div>
+          <div id="dice-pool" class="dice-pool"
+               ondragover="event.preventDefault()"
+               ondrop="onDropToPool(event)">
+          </div>
+        </div>
+        <!-- Skill drop zones -->
+        <div class="skills-col" id="skill-zones"></div>
+      </div>
+    </div>
+
+    <!-- Info panel (shown when enemy or non-selected hero is clicked) -->
+    <div id="info-panel" class="info-panel hidden">
+      <div class="panel-header">
+        <span id="info-title" class="panel-title"></span>
+        <button id="close-info-btn" class="btn btn-sm">✕</button>
+      </div>
+      <div id="info-body" class="panel-body info-body"></div>
+    </div>
+
+    <!-- Combat log -->
+    <div class="log-col">
+      <div class="log-header">Combat Log</div>
+      <div id="combat-log" class="combat-log"></div>
+    </div>
+
+  </div>
+</div>
+
+<script src="app.js"></script>
+</body>
+</html>
