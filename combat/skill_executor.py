@@ -58,10 +58,9 @@ def execute_skill(hero: HeroEntity, assignment: SkillAssignment) -> Optional["Sk
     dice_sum = sum(assignment.assigned_dice)
     dice_count = len(assignment.assigned_dice)
 
-    # --- Eviscerate: multi-hit (hit count = sum of all 4 dice) ---
+    # --- Eviscerate: multi-hit (hit count = sum of 2 dice, flat 1 dmg per hit) ---
     if special == "eviscerate":
         hit_count = dice_sum
-        per_hit = 2 + hero.effective_modifier(Stat.DEX)
         return SkillResult(
             skill=skill,
             effectiveness=hit_count,
@@ -69,7 +68,7 @@ def execute_skill(hero: HeroEntity, assignment: SkillAssignment) -> Optional["Sk
             hits_all=False,
             special=special,
             hit_count=hit_count,
-            per_hit_damage=max(1, per_hit),
+            per_hit_damage=1,
         )
 
     # --- Quick Jab: damage = dice_count * DEX_modifier ---

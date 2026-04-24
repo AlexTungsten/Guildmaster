@@ -72,6 +72,14 @@ function addHeroRow() {
     sel.appendChild(opt);
   });
 
+  const preview = document.createElement("span");
+  preview.className = "archetype-preview";
+
+  function updatePreview() {
+    const a = S.archetypes.find(x => x.id === sel.value);
+    if (a) preview.textContent = `${a.base_dice_count}d${a.base_dice_sides} · ${a.max_health}HP`;
+  }
+
   // Auto-fill name when archetype changes
   const fillName = () => {
     if (!nameInput.value || Object.values(defaultNames).includes(nameInput.value)) {
@@ -80,17 +88,8 @@ function addHeroRow() {
     updatePreview();
   };
   sel.addEventListener("change", fillName);
-  fillName();
-
-  const preview = document.createElement("span");
-  preview.className = "archetype-preview";
-
-  function updatePreview() {
-    const a = S.archetypes.find(x => x.id === sel.value);
-    if (a) preview.textContent = `${a.base_dice_count}d${a.base_dice_sides} · ${a.max_health}HP`;
-  }
-  updatePreview();
   sel.addEventListener("change", updatePreview);
+  fillName();
 
   const removeBtn = document.createElement("button");
   removeBtn.className = "btn btn-sm btn-danger";

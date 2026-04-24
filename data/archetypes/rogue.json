@@ -40,9 +40,9 @@
     },
     {
       "name": "Eviscerate",
-      "description": "Strike a single enemy multiple times. Hit count equals sum of all 4 dice. Each hit deals 2 + DEX damage (4 + DEX if target has any active debuff).",
+      "description": "Strike a single enemy multiple times. Hit count equals sum of the 2 dice. Each hit deals 1 damage (3 if target has any active debuff).",
       "associated_stat": "dexterity",
-      "dice_slots": 4,
+      "dice_slots": 2,
       "effect_type": "damage",
       "special": "eviscerate"
     }
